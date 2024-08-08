@@ -1,0 +1,33 @@
+type_of_data:
+  content: "content"
+  titles: "titles"
+  qa: "qa"
+
+paths:
+  content:
+    db: "./data/content/MilvusContent/milvus.db"
+    data: "./data/content/dataContent/"
+    data_tester: "./data_tester/data_content.csv"
+  titles:
+    db: "./data/titles/MilvusTitles/milvus.db"
+    data: "./data/titles/dataTitles/"
+  qa:
+    db: "./data/qa/MilvusQA/"
+    data: "./data/qa/dataQA/"
+    data_tester: "./data_tester/data_qa.csv"
+
+model:
+  name: 'Dolphin'
+  base_url: 'http://localhost:11434'
+  temperature: 0
+  num_ctx: 8192
+  num_predict: 1536
+  
+embedder:
+  name: 'sentence-transformers/all-MiniLM-L6-v2' #'sentence-transformers/all-mpnet-base-v2'
+  kwargs_cpu: {'device': cpu}
+  kwargs_cuda: {'device': cuda}
+
+retriever:
+  threshold: 0.55
+  simplifier: 0.75
