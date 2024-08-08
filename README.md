@@ -1,6 +1,5 @@
 **REPOSITORY PRIVATA**
 # Chatbot
-**REPOSITORY PRIVATA**
 
 
 Questi sono gli script principali del mio chatbot che ho programmato come mio progetto di tesi.
