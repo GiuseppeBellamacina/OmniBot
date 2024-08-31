@@ -1,5 +1,7 @@
 # Chatbot with RAG Functionalities
 
+Made in collaboration with [Drake9098](https://github.com/Drake9098)
+
 This repository contains the code for a chatbot that uses a customised version of the **RAG** model to generate responses.
 
 The chatbot is built using the **Langchain** framework, which is a framework for building conversational AI models.
