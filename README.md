@@ -44,6 +44,7 @@ For more information about **Ollama** you can visit the [Ollama official reposit
 - **Faiss**: I used **Faiss** to create the vectorial database. You can use any other library you want. In that case you will need to modify the `retriever` folder to use the new library.
 
 - **Langchain**: I used the **Langchain** framework to build the chatbot. You can use any other framework you want. In that case you will need to modify the `chatbot` folder to use the new framework.
+For more information about **Langchain** you can visit the [Langchain Documentation](https://python.langchain.com/v0.2/docs/introduction/).
 
 ## Usage
 
