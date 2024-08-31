@@ -165,11 +165,11 @@ def debug(func):
         try:
             result = func(*args, **kwargs)
             if type(result) == list:
-                print(f'Function \33[1;32m{func.__name__}\33[0m returned {result} (length: {len(result)})')
+                print(f'Function \33[1;32m{func.__name__}\33[0m returned {result} of type {type(result)} (length: {len(result)})')
                 for i, item in enumerate(result[:5]):
                     print(f'  item {i+1} of type {type(item)}: {item}')
             else:
-                print(f'Function \33[1;32m{func.__name__}\33[0m returned {result}')
+                print(f'Function \33[1;32m{func.__name__}\33[0m returned {result} of type {type(result)}')
             print("\33[1;33m----------------------------------------------\33[0m")
             return result
         except Exception as e:
