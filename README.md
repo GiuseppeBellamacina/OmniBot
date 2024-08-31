@@ -74,3 +74,5 @@ COHERE_API_KEY='your_api_key'
 ```
 
 I used an **Ollama** model to generate the responses, but you can use any other model you want. In that case remember to modify the `config.yaml` file in the `chatbot` folder and to include any possible API key in the `.env` file.
+
+You can also use a model directly from the **Hugging Face** model hub.
