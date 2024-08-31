@@ -7,22 +7,18 @@ from langchain_community.document_loaders import (
     DataFrameLoader
 )
 
-from data_manager import Data, DataType, DataList
+from data_manager import Data, DataType
 
 import pandas as pd
 import bs4
-import os
 
 class Splitter():
-    def __init__(self, config: dict, type_of_data: str):
-        self.config = config
-        self.type = type_of_data
-        print("\33[1;36m[Splitter]\33[0m: Splitter inizializzato per", type_of_data)
+    def __init__(self, dir_path: dict):
+        self.dir_path = dir_path
     
     def TextChunks(self, data: Data) -> list[Document]:
         try:
-            data_dir = self.config['paths'][self.type]['data']
-            path = data_dir + data.path
+            path = self.dir_path + data.path
             loader = TextLoader(path, encoding="utf-8")
             if data.chunk_size == 0:
                 data.chunk_size = len(open(path, "r", encoding="utf-8").read()) # Set chunk size to the length of the document
@@ -35,12 +31,10 @@ class Splitter():
                 s.metadata["title"] = title
                 source = data.path
                 content = s.page_content
-                s.metadata["type"] = self.type
-                if self.type != "titles":
-                    if title == content and len(splits) > 1:
-                        continue # Skip if title is the same as content and there are multiple chunks
-                    final_content = f"\\TITLE: {title}\\SOURCE: {source}\\BODY: {content}"
-                    s.page_content = final_content
+                if title == content and len(splits) > 1:
+                    continue # Skip if title is the same as content and there are multiple chunks
+                final_content = f"\\TITLE: {title}\\SOURCE: {source}\\BODY: {content}"
+                s.page_content = final_content
                 new_splits.append(s)
             print(f"\33[1;32m[Splitter]\33[0m: Creati {len(new_splits)} chunks di tipo Text per", data.path)
             return new_splits
@@ -66,8 +60,7 @@ class Splitter():
     
     def PDFChunks(self, data: Data) -> list[Document]:
         try:
-            data_dir = self.config['paths'][self.type]['data']
-            path = data_dir + data.path
+            path = self.dir_path + data.path
             loader = PyPDFDirectoryLoader(path)
             splitter = RecursiveCharacterTextSplitter(chunk_size=data.chunk_size, chunk_overlap=data.chunk_overlap)
             loaded = loader.load()
@@ -80,8 +73,7 @@ class Splitter():
     
     def DFChunks(self, data: Data) -> list[Document]:
         try:
-            data_dir = self.config['paths'][self.type]['data']
-            path = data_dir + data.path
+            path = self.dir_path + data.path
             df = pd.read_csv(path)
             loader = DataFrameLoader(df, page_content_column=data.extra)
             splitter = RecursiveCharacterTextSplitter(chunk_size=data.chunk_size, chunk_overlap=data.chunk_overlap)
@@ -128,32 +120,3 @@ class Splitter():
         
         print(f"\33[1;32m[Splitter]\33[0m: Creati {len(chunks)} chunks totali")
         return chunks
-
-class Titler():
-    def __init__(self, config: dict):
-        self.config = config
-        print("\33[1;36m[Titler]\33[0m: Titler inizializzato")
-         
-    def create_title_file(self, documents):
-        """
-        Create a file with the title of the document
-
-        Args:
-            document (Document): Document to extract title from
-        """
-        i = 0
-        path = self.config['paths']['titles']['data']
-        if not os.path.exists(path):
-            os.makedirs(path)
-        for d in documents:
-            title = d.metadata["title"]
-            filename = title.replace(" ", "_") + str(i) + ".txt"
-            filename = filename.replace("/", "_")
-            with open(path+filename, "w", encoding="utf-8") as f:
-                f.write(title)
-            i += 1
-        
-        data_list = DataList()
-        data_list.add_dir(main_dir=path, path="")
-        data = data_list.get_data()
-        return data

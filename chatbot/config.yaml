@@ -1,0 +1,12 @@
+db: './db'
+
+model:
+  name: 'mistral-nemo'
+  base_url: 'http://localhost:11434'
+  temperature: 0
+  num_ctx: 8192
+  num_predict: 1536
+  
+embedder: 'embed-multilingual-v3.0'
+reranker: 'rerank-multilingual-v3.0'
+threshold: 0.7

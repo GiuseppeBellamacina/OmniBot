@@ -5,7 +5,8 @@ from langchain_core.runnables import (
     RunnableBranch,
     RunnableLambda,
     RunnableSequence,
-    RunnablePassthrough
+    RunnablePassthrough,
+    Runnable
 )
 
 from retriever import Retriever
@@ -106,9 +107,11 @@ class DocumentChain(Chain):
     - input
     - context
     """
-    def __init__(self, llm, handler):
+    def __init__(self, llm, handler, retriever: Retriever, threshold: float):
         super().__init__(llm, handler)
         self.name = 'DocumentChain'
+        self.retriever = retriever
+        self.threshold = threshold
         
         self.prompt = ChatPromptTemplate.from_messages(
             [
@@ -130,107 +133,38 @@ class DocumentChain(Chain):
         
         print("\33[1;36m[DocumentChain]\33[0m: Chain inizializzata")
 
-QUERY_TRANSFORM_TEMPLATE = """ \
-Hai il compito di gestire una catena di QUERY EXPANSION. \
-L'utente ha chiesto: "{input}". \
-Gli ultimi messaggi erano: \
-{chat_history} \
-
-NON devi rispondere alla domanda dell'utente. \
-Devi SOLO trasformare l'input dell'utente in uno più chiaro basato sugli ultimi due messaggi. \
-Il nuovo input deve contenere informazioni più specifiche in modo tale da poter essere passato ad una RAG Chain. \
-NON dire altro all'utente. \
-
-Esempi:
-- Input utente: "Parlami di questa sezione"
-  Ultimi messaggi: "La nostra azienda si occupa di tante cose, potrai trovare maggiori info nella sezione "Servizi"."
-  Nuovo input: "Parlami della sezione "Servizi""
-- Input utente: "Parlami dell'ultima macchina"
-  Ultimi messaggi: "In Italia vengono prodotte molte macchine, come Ferrari, Lamborghini, Maserati, ecc."
-  Nuovo input: "Parlami delle Maserati"
-
-NON scrivere cose che non siano il nuovo input. \
-NON inventare o aggiungere informazioni che non sono state scritte nei messaggi precedenti. \
-"""
-
-class SecondChanceChain(Chain):
-    """
-    It's the chain which manages the follow-up questions.
-    To use it it is necessary to specify:
-    - input
-    """
-    def __init__(self, llm, history, handler):
-        super().__init__(llm, handler)
-        
-        self.history = history
-        
-        self.prompt = PromptTemplate.from_template(QUERY_TRANSFORM_TEMPLATE).with_config(run_name="SecondChanceChainPrompt")
-        
-        self.get_messages = RunnablePassthrough.assign(
-            chat_history = lambda x: self.history.get_last_messages(2),
-        ).with_config(run_name="SecondChanceChainGetMessages")
-        
-        self.sequence = RunnableSequence(
-            self.get_messages,
-            self.prompt,
-            self.llm
-        ).with_config(run_name="SecondChanceChainSequence")
-        
-        self.chain = (
-            RunnablePassthrough.assign(
-                old_input = (lambda x: x.get('input', '')),
-                input = self.sequence
-            ).with_config(run_name="SecondChanceChainTranformed")
-        ).with_config(run_name="SecondChanceChain")
-        print("\33[1;36m[SecondChanceChain]\33[0m: Chain inizializzata")
-
 class DefaultChain(Chain):
     """
-    It's the chain which manages Document and Conversational.
+    It's the chain which manages the DocumentChain and the ConversationalChain.
     To use it it is necessary to specify:
     - input
     """
-    def __init__(self, llm, retriever: Retriever, threshold: float, simplifier: float, history, handler):
+    def __init__(self, llm, handler, retriever: Retriever, threshold: float, document_chain: Runnable, conversational_chain: Runnable):
         super().__init__(llm, handler)
         self.name = "DefaultChain"
-        
         self.retriever = retriever
         self.threshold = threshold
-        self.history = history
-        self.document_chain = DocumentChain(llm, self.handler).chain
-        self.second_chance_chain = SecondChanceChain(llm, self.history, self.handler).chain
-        self.conversational_chain = ConversationalChain(llm, self.handler).chain
 
-        self.retrieval_chain = RunnableBranch(
-            (RunnableLambda(lambda x: x.get('old_input', None)),
-                RunnablePassthrough.assign(
-                    context = RunnableLambda(lambda x: self.retriever.retrieve(x.get('input'), True))
-                ).with_config(run_name="RetrievalChainSemplified")
-            ),
-            RunnablePassthrough.assign(
-                context = RunnableLambda(lambda x: self.retriever.retrieve(x.get('input')))
-            ).with_config(run_name="RetrievalChainStandard")
-        ).with_config(run_name="RetrievalChain")
-        
-        self.second_branch = self.retrieval_chain.with_config(run_name="SecondBranchRetrieval") | RunnableBranch(
-            (RunnableLambda(lambda x: len(x.get('context', '')) > 0).with_config(run_name="ContextCheck"),
+        self.document_chain = document_chain
+        self.conversational_chain = conversational_chain
+
+        self.retrieval = RunnablePassthrough.assign(
+            context = RunnableLambda(lambda x: self.retriever.retrieve(x.get('input'), self.threshold))
+        ).with_config(run_name="DefaultChainRetrieval")
+
+        self.branch = RunnableBranch(
+            (RunnableLambda(lambda x: x.get('context') != []),
                 self.document_chain
             ),
             self.conversational_chain
-        ).with_config(run_name="SecondBranch")
-        
-        self.branch = RunnableBranch(
-            (RunnableLambda(lambda x: len(x.get('context', '')) > 0).with_config(run_name="ContextCheck"),
-                self.document_chain
-            ),
-            self.second_chance_chain | self.second_branch
-        ).with_config(run_name="DefaultBranch")
-        
+        ).with_config(run_name="DefaultChainBranch")
+
         self.chain = (
-            self.retrieval_chain | self.branch
+            self.retrieval | self.branch
         ).with_config(run_name=self.name)
-        
+
         print("\33[1;36m[DefaultChain]\33[0m: Chain inizializzata")
+    
 
 CLASSIFICATION_TEMPLATE = """
 Stai parlando con un utente e devi classificare le sue domande in tre categorie: "summary", "followup", "document" e "conversational".
@@ -266,7 +200,7 @@ class ClassificationChain(Chain):
         
         self.chain = (
             RunnablePassthrough.assign(
-                type=RunnableLambda(lambda x: self.sequence.invoke({"input": x.get('input')}).get('type', 'default'))
+                type=RunnableLambda(lambda x: self.sequence.invoke({"input": x.get('input')}).get('type', 'conversational'))
             ).with_config(run_name="ClassificationChainType")
         ).with_config(run_name=self.name)
         
@@ -329,14 +263,12 @@ class FollowupChain(Chain):
     To use it it is necessary to specify:
     - input
     """
-    def __init__(self, llm, retriever: Retriever, threshold: float, simplifier: float, history, handler):
+    def __init__(self, llm, retriever: Retriever, threshold: float, history, handler):
         super().__init__(llm, handler)
         self.name = "FollowupChain"
         self.retriever = retriever
         self.threshold = threshold
-        self.simplifier = simplifier
         self.history = history
-        self.conversational_chain = ConversationalChain(self.llm, self.handler).chain
         
         self.prompt = PromptTemplate.from_template(FOLLOWUP_TEMPLATE).with_config(run_name="FollowupChainPrompt")
         
@@ -350,23 +282,23 @@ class FollowupChain(Chain):
             ).with_config(run_name="FollowupAnswer").assign(signature=lambda x: self.name)
         ).with_config(run_name="FollowupSequence")
         
-        self.branch = RunnableBranch(
-            (RunnableLambda(lambda x: len(x.get('context', '')) > 0).with_config(run_name="ContextCheck"),
-                self.sequence
-            ),
-            self.conversational_chain
-        ).with_config(run_name="FollowupBranch")
-        
         self.chain = (
-            self.retrieve_ctx | self.branch
+            RunnableLambda(lambda x: self.retrieve_ctx)
+            | self.sequence
         ).with_config(run_name=self.name)
         
         print("\33[1;36m[FollowupChain]\33[0m: Chain inizializzata")
     
     def get_ctx(self, user_input) -> list[Document]:
         relevant_docs = []
-        relevant_docs.extend(self.history.get_followup_ctx(user_input, self.threshold * self.simplifier))
-        docs = self.retriever.retrieve(user_input)
+        folloup_ctx = self.history.get_followup_ctx(user_input, 0.4)
+        print("\33[1;36m[FollowupChain]\33[0m: Contesto recuperato")
+        print(folloup_ctx)
+        if folloup_ctx:
+            relevant_docs.extend(folloup_ctx)
+        docs = self.retriever.retrieve(user_input, self.threshold)
+        print("\33[1;36m[FollowupChain]\33[0m: Risultati recuperati")
+        print(docs)
         relevant_docs.extend(docs)
         unique_docs = {}
         for doc in relevant_docs:
@@ -379,20 +311,20 @@ class ChainOfThoughts(Chain):
     To use it it is necessary to specify:
     - input
     """
-    def __init__(self, llm, retriever: Retriever, threshold: float, simplifier: float, history, handler):
+    def __init__(self, llm, retriever: Retriever, threshold: float, history, handler):
         super().__init__(llm, handler)
         self.name = "ChainOfThoughts"
         self.retriever = retriever
         self.threshold = threshold
-        self.simplifier = simplifier
         self.history = history
         self.handler = handler
 
         self.classification_chain = ClassificationChain(self.llm, self.handler).chain
-        self.default_chain = DefaultChain(self.llm, self.retriever, self.threshold, self.simplifier, self.history, self.handler).chain
-        self.summarization_chain = SummarizationChain(self.llm, self.history, self.handler).chain
-        self.followup_chain = FollowupChain(self.llm, self.retriever, self.threshold, self.simplifier, self.history, self.handler).chain
+        self.document_chain = DocumentChain(self.llm, self.handler, self.retriever, self.threshold).chain
         self.conversational_chain = ConversationalChain(self.llm, self.handler).chain
+        self.default_chain = DefaultChain(self.llm, self.handler, self.retriever, self.threshold, self.document_chain, self.conversational_chain).chain
+        self.summarization_chain = SummarizationChain(self.llm, self.history, self.handler).chain
+        self.followup_chain = FollowupChain(self.llm, self.retriever, self.threshold, self.history, self.handler).chain
 
         self.branch = RunnableBranch(
             (RunnableLambda(lambda x: x.get('type') == 'summary'),
@@ -409,15 +341,25 @@ class ChainOfThoughts(Chain):
             ),
             self.default_chain
         ).with_config(run_name="ChainOfThoughtsBranch")
-        
-        self.sequence = (
-            self.classification_chain | self.branch
-        ).with_config(run_name="ChainOfThoughtsSequence")
 
-        self.chain = RunnableBranch(
-            (RunnableLambda(lambda x: self.history.messages != []).with_config(run_name="HistoryCheck"),
-                self.sequence
+        self.firstMessageBranch = RunnableBranch(
+            (RunnableLambda(lambda x: x.get('type') == 'document'),
+                self.default_chain
+            ),
+            (RunnableLambda(lambda x: x.get('type') == 'conversational'),
+                self.conversational_chain
             ),
             self.default_chain
+        ).with_config(run_name="ChainOfThoughtsFirstBranch")
+
+        self.isFirst = RunnableBranch(
+            (RunnableLambda(lambda x: self.history.messages != []).with_config(run_name="HistoryCheck"),
+                self.branch
+            ),
+            self.firstMessageBranch
+        ).with_config(run_name="ChainOfThoughtsIsFirst")
+
+        self.chain = (
+            self.classification_chain | self.isFirst
         ).with_config(run_name=self.name)
         print("\33[1;36m[ChainOfThoughts]\33[0m: Chain inizializzata")

@@ -1,0 +1,8 @@
+*.env
+*.faiss
+*.pkl
+*.ipynb
+*.txt
+*/data
+*/db
+*/dbs

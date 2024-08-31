@@ -20,7 +20,7 @@ class Session():
         self.state = st.session_state
         print("\33[1;36m[Session]\33[0m: Sessione inizializzata")
         
-    def initialize_session_state(self, data: list):
+    def initialize_session_state(self):
         if "is_initialized" not in self.state or not self.state.is_initialized:
             config = load_config(self.config_path)
             print("\33[1;34m[Session]\33[0m: Avvio inizializzazione")
@@ -38,7 +38,7 @@ class Session():
             print("\33[1;32m[Session]\33[0m: StreamHandler inizializzato")
             
             # Retriever
-            self.state.retriever = Retriever(config, data)
+            self.state.retriever = Retriever(config)
             if self.state.retriever is None:
                 print("\33[1;31m[Session]\33[0m: Retriever non inizializzato")
                 return
@@ -58,8 +58,7 @@ class Session():
             self.state.chain = ChainOfThoughts(
                 llm=self.state.llm,
                 retriever=self.state.retriever,
-                threshold=config['retriever']['threshold'],
-                simplifier=config['retriever']['simplifier'],
+                threshold=config['threshold'],
                 history=self.state.history,
                 handler=self.state.handler
             )
@@ -83,6 +82,9 @@ class Session():
 
             if st.button("- Cosa sai dirmi sui concorsi per gli ufficiali?"):
                 faq_prompt = "Cosa sai dirmi sui concorsi per gli ufficiali?"
+
+            if st.button("- Come si fa la pasta alla carbonara?", use_container_width=True):
+                faq_prompt = "Come si fa la pasta alla carbonara?"
             
             for _ in range(15):
                 st.write("")
@@ -117,10 +119,13 @@ class Session():
                     with st.spinner("Elaborazione in corso..."):
                         response = self.state.chain.stream(input_dict, containers)
                 
-                signature = response.get('signature', None)
-                if signature and signature != 'NegativeChain':
-                    self.state.history.add_message_from_user(prompt)
-                    self.state.history.add_message_from_response(response)
+                self.state.history.add_message_from_user(prompt)
+                self.state.history.add_message_from_response(response)
+                
+                # Limit history to 10 messages
+                if len(self.state.history.messages) > 10:
+                    print("\33[1;33m[Session]\33[0m: Limitazione della history a 10 messaggi")
+                    self.state.history.messages = self.state.history.messages[-10:]
                 
                 self.state.messages.append({
                     "role": "ai",
@@ -142,14 +147,13 @@ class Session():
                 with st.spinner("Elaborazione in corso..."):
                     response = self.state.chain.stream(input_dict, containers)
             
-            signature = response.get('signature', None)
-            if signature and signature != 'ConversationalChain':
-                self.state.history.add_message_from_user(faq_prompt)
-                self.state.history.add_message_from_response(response)
+            self.state.history.add_message_from_user(faq_prompt)
+            self.state.history.add_message_from_response(response)
                 
-                # Limit history to 10 messages
-                if len(self.state.history.messages) > 10:
-                    self.state.history.messages = self.state.history.messages[-10:]
+            # Limit history to 10 messages
+            if len(self.state.history.messages) > 10:
+                print("\33[1;33m[Session]\33[0m: Limitazione della history a 10 messaggi")
+                self.state.history.messages = self.state.history.messages[-10:]
             
             self.state.messages.append({
                 "role": "ai",

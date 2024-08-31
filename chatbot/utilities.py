@@ -1,10 +1,8 @@
-from langchain_core.documents import Document
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 from langchain_core.messages import HumanMessage, AIMessage
 
 from time import time
-
 import yaml
 
 ###  Messages ###
@@ -69,7 +67,8 @@ class ChatHistory():
             similarity = cosine_similarity([selected_vector], [vector])[0][0]
             if similarity > threshold:
                 ctx.extend(self.messages[i].documents)
-        return ctx.extend(self.messages[-1].documents)
+        ctx.extend(self.messages[-1].documents)
+        return ctx
     
     def get_followup_ctx(self, message: str, threshold: float):
         self.train_vectorizer()

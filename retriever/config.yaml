@@ -1,0 +1,5 @@
+paths:
+  db: "./data/dbs/"
+  data: "./data/files/"
+  
+embedder: 'embed-multilingual-v3.0'
