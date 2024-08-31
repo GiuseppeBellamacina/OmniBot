@@ -292,11 +292,13 @@ class FollowupChain(Chain):
     def get_ctx(self, user_input) -> list[Document]:
         relevant_docs = []
         folloup_ctx = self.history.get_followup_ctx(user_input, 0.4)
+        #! DEBUG
         print("\33[1;36m[FollowupChain]\33[0m: Contesto recuperato")
         print(folloup_ctx)
         if folloup_ctx:
             relevant_docs.extend(folloup_ctx)
         docs = self.retriever.retrieve(user_input, self.threshold)
+        #! DEBUG
         print("\33[1;36m[FollowupChain]\33[0m: Risultati recuperati")
         print(docs)
         relevant_docs.extend(docs)

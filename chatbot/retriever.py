@@ -24,6 +24,7 @@ class Retriever():
     def retrieve(self, query: str, threshold=0) -> list[Document]:
         docs = self.compression_retriever.invoke(query)
         print("\33[1;36m[Retriever]\33[0m: Risultati recuperati")
+        #! DEBUG
         for num, d in enumerate(docs):
             break
             print(f"{num+1}.")
@@ -34,6 +35,7 @@ class Retriever():
             return docs
     
     def filter(self, docs: list[Document], threshold: float) -> list[Document]:
+        #! DEBUG
         for d in docs:
             print(d.metadata.get('relevance_score'))
         return [d for d in docs if d.metadata.get('relevance_score') > threshold]
@@ -41,6 +43,7 @@ class Retriever():
     def find_similar(self, doc: Document, threshold=0) -> list[Document]:
         embedded_doc = self.embedder.embed_documents([doc.page_content])[0]
         similar = self.vectorstore.similarity_search_with_score_by_vector(embedded_doc)
+        #! DEBUG
         print("\33[1;36m[Retriever]\33[0m: Documento simile recuperato")
         for num, d in enumerate(similar):
             print(f"{num+1}.")
