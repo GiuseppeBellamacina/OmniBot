@@ -291,7 +291,7 @@ class FollowupChain(Chain):
     
     def get_ctx(self, user_input) -> list[Document]:
         relevant_docs = []
-        folloup_ctx = self.history.get_followup_ctx(user_input, 0.4)
+        folloup_ctx = self.history.get_followup_ctx(user_input, 0.4) #TODO: mettilo nel config
         #! DEBUG
         print("\33[1;36m[FollowupChain]\33[0m: Contesto recuperato")
         print(folloup_ctx)
