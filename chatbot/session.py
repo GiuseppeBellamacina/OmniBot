@@ -10,8 +10,7 @@ from utilities import (
 import streamlit as st
 
 class Session():
-    def __init__(self, title: str, icon: str, header: str = "", config_path: str = "config.yaml"):
-        self.config_path = config_path
+    def __init__(self, title: str, icon: str, header: str = ""):
         st.set_page_config(page_title=title, page_icon=icon)
         st.title(title)
         if header != "":
@@ -22,7 +21,7 @@ class Session():
         
     def initialize_session_state(self):
         if "is_initialized" not in self.state or not self.state.is_initialized:
-            config = load_config(self.config_path)
+            self.state.config = load_config()
             print("\33[1;34m[Session]\33[0m: Avvio inizializzazione")
             
             # Messaggi
@@ -38,7 +37,7 @@ class Session():
             print("\33[1;32m[Session]\33[0m: StreamHandler inizializzato")
             
             # Retriever
-            self.state.retriever = Retriever(config)
+            self.state.retriever = Retriever(self.state.config)
             if self.state.retriever is None:
                 print("\33[1;31m[Session]\33[0m: Retriever non inizializzato")
                 return
@@ -46,22 +45,26 @@ class Session():
 
             # LLM
             self.state.llm = OllamaLLM(
-                model=config['model']['name'],
-                base_url=config['model']['base_url'],
-                temperature=config['model']['temperature'],
-                num_ctx=config['model']['num_ctx'],
-                num_predict=config['model']['num_predict']
+                model=self.state.config['model']['name'],
+                base_url=self.state.config['model']['base_url'],
+                temperature=self.state.config['model']['temperature'],
+                num_ctx=self.state.config['model']['num_ctx'],
+                num_predict=self.state.config['model']['num_predict']
             )
             print("\33[1;32m[Session]\33[0m: LLM inizializzato")
 
             # Chain
             self.state.chain = ChainOfThoughts(
                 llm=self.state.llm,
-                retriever=self.state.retriever,
-                threshold=config['threshold'],
+                handler=self.state.handler,
                 history=self.state.history,
-                handler=self.state.handler
+                num_messages=self.state.config['history_size'],
+                retriever=self.state.retriever,
+                retrieval_threshold=self.state.config['retrieval_threshold'],
+                followup_threshold=self.state.config['followup_threshold'],
+                embedding_threshold=self.state.config['embedding_threshold']
             )
+            
             print("\33[1;32m[Session]\33[0m: Chain inizializzata")
             self.state.is_initialized = True
             print("\33[1;32m[Session]\33[0m: Inizializzazione completata")
@@ -122,10 +125,11 @@ class Session():
                 self.state.history.add_message_from_user(prompt)
                 self.state.history.add_message_from_response(response)
                 
-                # Limit history to 10 messages
-                if len(self.state.history.messages) > 10:
-                    print("\33[1;33m[Session]\33[0m: Limitazione della history a 10 messaggi")
-                    self.state.history.messages = self.state.history.messages[-10:]
+                # Limit history
+                history_size = self.state.config['history_size']
+                if len(self.state.history.messages) > history_size:
+                    print(f"\33[1;33m[Session]\33[0m: Limitazione della history a {history_size} messaggi")
+                    self.state.history.messages = self.state.history.messages[-history_size:]
                 
                 self.state.messages.append({
                     "role": "ai",
@@ -137,6 +141,7 @@ class Session():
                     "role": "human",
                     "content": faq_prompt
             })
+            
             with st.chat_message("human"):
                 st.markdown(faq_prompt)
 
@@ -150,10 +155,11 @@ class Session():
             self.state.history.add_message_from_user(faq_prompt)
             self.state.history.add_message_from_response(response)
                 
-            # Limit history to 10 messages
-            if len(self.state.history.messages) > 10:
-                print("\33[1;33m[Session]\33[0m: Limitazione della history a 10 messaggi")
-                self.state.history.messages = self.state.history.messages[-10:]
+            # Limit history
+            history_size = self.state.config['history_size']
+            if len(self.state.history.messages) > history_size:
+                print(f"\33[1;33m[Session]\33[0m: Limitazione della history a {history_size} messaggi")
+                self.state.history.messages = self.state.history.messages[-history_size:]
             
             self.state.messages.append({
                 "role": "ai",

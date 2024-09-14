@@ -6,7 +6,12 @@ model:
   temperature: 0
   num_ctx: 8192
   num_predict: 1536
-  
+
+history_size: 12
+
 embedder: 'embed-multilingual-v3.0'
 reranker: 'rerank-multilingual-v3.0'
-threshold: 0.7
+
+retrieval_threshold: 0.7
+followup_threshold: 0.4
+embedding_threshold: 0.35

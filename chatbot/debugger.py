@@ -1,6 +1,8 @@
 from inspect import signature
 
 def debug(max_items=5):
+    if max_items < 0:
+        max_items = 0
     def decorator(func):
         def wrapper(*args, **kwargs):
             print("\33[1;33m----------------------------------------------\33[0m")

@@ -127,7 +127,7 @@ class StdOutHandler():
         self.text = ""
         raise error
 
-def load_config(file_path):
+def load_config(file_path='config.yaml'):
     """
     Load configuration file
     
