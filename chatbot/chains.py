@@ -28,9 +28,10 @@ class ChainInterface(ABC):
         pass
 
 class Chain(ChainInterface):
-    def __init__(self, llm: Runnable, handler: StdOutHandler | None):
+    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str = "Chain"):
         self.llm = llm
         self.handler = handler
+        self.name = name
     
     def run(self) -> Runnable:
         return self.llm
@@ -83,8 +84,8 @@ class Chain(ChainInterface):
         ).with_config(run_name="ChatPromptTemplate")
 
 class HistoryAwareChain(Chain):
-    def __init__(self, llm: Runnable, handler: StdOutHandler | None, history: ChatHistory, num_messages: int):
-        super().__init__(llm, handler)
+    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory, num_messages: int):
+        super().__init__(llm, handler, name)
         self.history = history
         self.num_messages = num_messages
     
@@ -122,8 +123,8 @@ Cerca di rispondere in modo adeguato alla conversazione.
 """
 
 class ConversationalChain(HistoryAwareChain):
-    def __init__(self, llm: Runnable, handler: StdOutHandler | None, history: ChatHistory, num_messages: int):
-        super().__init__(llm, handler, history, num_messages)
+    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory, num_messages: int):
+        super().__init__(llm, handler, name, history, num_messages)
         self.name = 'ConversationalChain'
         print("\33[1;36m[ConversationalChain]\33[0m: Chain inizializzata")
     
@@ -165,8 +166,8 @@ class DocumentChain(HistoryAwareChain):
     - input
     - context
     """
-    def __init__(self, llm: Runnable, handler: StdOutHandler | None, history: ChatHistory, num_messages: int):
-        super().__init__(llm, handler, history, num_messages)
+    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory, num_messages: int):
+        super().__init__(llm, handler, name, history, num_messages)
         self.name = 'DocumentChain'
         print("\33[1;36m[DocumentChain]\33[0m: Chain inizializzata")
         
@@ -194,9 +195,9 @@ class DefaultChain(Chain):
     To use it it is necessary to specify:
     - input
     """
-    def __init__(self, llm: Runnable, handler: StdOutHandler | None,
+    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str,
                  retriever: Retriever, threshold: float, document_chain: Runnable, conversational_chain: Runnable):
-        super().__init__(llm, handler)
+        super().__init__(llm, handler, name)
         self.name = "DefaultChain"
         self.retriever = retriever
         self.threshold = threshold
@@ -246,8 +247,8 @@ class ClassificationChain(Chain):
     To use it it is necessary to specify:
     - input
     """
-    def __init__(self, llm: Runnable, handler: StdOutHandler | None):
-        super().__init__(llm, handler)
+    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str):
+        super().__init__(llm, handler, name)
         self.name = "ClassificationChain"
         print("\33[1;36m[ClassificationChain]\33[0m: Chain inizializzata")
     
@@ -289,8 +290,8 @@ class SummarizationChain(HistoryAwareChain):
     To use it it is necessary to specify:
     - input
     """
-    def __init__(self, llm: Runnable, handler: StdOutHandler | None, history: ChatHistory, num_messages: int):
-        super().__init__(llm, handler, history, num_messages)
+    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory, num_messages: int):
+        super().__init__(llm, handler, name, history, num_messages)
         self.name = "SummarizationChain"
         print("\33[1;36m[SummarizationChain]\33[0m: Chain inizializzata")
     
@@ -334,9 +335,9 @@ class FollowupChain(HistoryAwareChain):
     To use it it is necessary to specify:
     - input
     """
-    def __init__(self, llm: Runnable, handler: StdOutHandler | None, history: ChatHistory, num_messages: int,
+    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory, num_messages: int,
                  retriever: Retriever, retrieval_threshold: float, followup_threshold: float, embedding_threshold: float):
-        super().__init__(llm, handler, history, num_messages)
+        super().__init__(llm, handler, name, history, num_messages)
         self.name = "FollowupChain"
         self.retriever = retriever
         
@@ -406,9 +407,9 @@ class ChainOfThoughts(HistoryAwareChain):
     To use it it is necessary to specify:
     - input
     """
-    def __init__(self, llm: Runnable, handler: StdOutHandler | None, history: ChatHistory, num_messages: int,
+    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory, num_messages: int,
                  retriever: Retriever, retrieval_threshold: float, followup_threshold: float, embedding_threshold: float):
-        super().__init__(llm, handler, history, num_messages)
+        super().__init__(llm, handler, name, history, num_messages)
         self.name = "ChainOfThoughts"
         self.retriever = retriever
         
