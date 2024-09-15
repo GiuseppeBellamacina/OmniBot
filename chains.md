@@ -115,12 +115,12 @@ classDiagram
     HistoryAwareChain <|-- FollowUpChain
     HistoryAwareChain <|-- ChainOfThoughts
 
-    ChaioOfThoughts --> ConversationChain
-    ChaioOfThoughts --> DocumentChain
-    ChaioOfThoughts --> FollowUpChain
-    ChaioOfThoughts --> SummarizationChain
-    ChaioOfThoughts --> ClassificationChain
-    ChaioOfThoughts --> DefaultChain
+    ChainOfThoughts --> ConversationalChain
+    ChainOfThoughts --> DocumentChain
+    ChainOfThoughts --> FollowUpChain
+    ChainOfThoughts --> SummarizationChain
+    ChainOfThoughts --> ClassificationChain
+    ChainOfThoughts --> DefaultChain
 
     DefaultChain --> ConversationalChain
     DefaultChain --> DocumentChain
