@@ -10,7 +10,7 @@ class DBMaker():
     def __init__(self, config: dict, vectorstore: VectorStore):
         self.config = config
         self.vectorstore = vectorstore
-        print("\33[1;36m[DBMaker]\33[0m: Maker del database inizializzato")
+        print("\33[1;34m[DBMaker]\33[0m: Maker del database inizializzato")
     
     def make(self, data: list[Data]):
         """

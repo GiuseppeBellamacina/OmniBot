@@ -125,8 +125,7 @@ Cerca di rispondere in modo adeguato alla conversazione.
 class ConversationalChain(HistoryAwareChain):
     def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory, num_messages: int):
         super().__init__(llm, handler, name, history, num_messages)
-        self.name = 'ConversationalChain'
-        print("\33[1;36m[ConversationalChain]\33[0m: Chain inizializzata")
+        print("\33[1;34m[ConversationalChain]\33[0m: Chain inizializzata")
     
     def sequence(self):
         return RunnableSequence(
@@ -168,8 +167,7 @@ class DocumentChain(HistoryAwareChain):
     """
     def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory, num_messages: int):
         super().__init__(llm, handler, name, history, num_messages)
-        self.name = 'DocumentChain'
-        print("\33[1;36m[DocumentChain]\33[0m: Chain inizializzata")
+        print("\33[1;34m[DocumentChain]\33[0m: Chain inizializzata")
         
     def sequence(self):
         return RunnableSequence(
@@ -198,13 +196,12 @@ class DefaultChain(Chain):
     def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str,
                  retriever: Retriever, threshold: float, document_chain: Runnable, conversational_chain: Runnable):
         super().__init__(llm, handler, name)
-        self.name = "DefaultChain"
         self.retriever = retriever
         self.threshold = threshold
 
         self.document_chain = document_chain
         self.conversational_chain = conversational_chain
-        print("\33[1;36m[DefaultChain]\33[0m: Chain inizializzata")
+        print("\33[1;34m[DefaultChain]\33[0m: Chain inizializzata")
 
     def context(self):
         return RunnablePassthrough.assign(
@@ -249,8 +246,7 @@ class ClassificationChain(Chain):
     """
     def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str):
         super().__init__(llm, handler, name)
-        self.name = "ClassificationChain"
-        print("\33[1;36m[ClassificationChain]\33[0m: Chain inizializzata")
+        print("\33[1;34m[ClassificationChain]\33[0m: Chain inizializzata")
     
     #* Override
     def fill_prompt(self):
@@ -292,8 +288,7 @@ class SummarizationChain(HistoryAwareChain):
     """
     def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory, num_messages: int):
         super().__init__(llm, handler, name, history, num_messages)
-        self.name = "SummarizationChain"
-        print("\33[1;36m[SummarizationChain]\33[0m: Chain inizializzata")
+        print("\33[1;34m[SummarizationChain]\33[0m: Chain inizializzata")
     
     #* Override
     def fill_prompt(self):
@@ -338,13 +333,12 @@ class FollowupChain(HistoryAwareChain):
     def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory, num_messages: int,
                  retriever: Retriever, retrieval_threshold: float, followup_threshold: float, embedding_threshold: float):
         super().__init__(llm, handler, name, history, num_messages)
-        self.name = "FollowupChain"
         self.retriever = retriever
         
         self.retrieval_threshold = retrieval_threshold
         self.followup_threshold = followup_threshold
         self.embedding_threshold = embedding_threshold
-        print("\33[1;36m[FollowupChain]\33[0m: Chain inizializzata")
+        print("\33[1;34m[FollowupChain]\33[0m: Chain inizializzata")
     
     #* Override
     def fill_prompt(self):
@@ -410,22 +404,21 @@ class ChainOfThoughts(HistoryAwareChain):
     def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory, num_messages: int,
                  retriever: Retriever, retrieval_threshold: float, followup_threshold: float, embedding_threshold: float):
         super().__init__(llm, handler, name, history, num_messages)
-        self.name = "ChainOfThoughts"
         self.retriever = retriever
         
         self.retrieval_threshold = retrieval_threshold
         self.followup_threshold = followup_threshold
         self.embedding_threshold = embedding_threshold
 
-        self.classification_chain = ClassificationChain(self.llm, self.handler)
-        self.document_chain = DocumentChain(self.llm, self.handler, self.history, self.num_messages)
-        self.conversational_chain = ConversationalChain(self.llm, self.handler, self.history, self.num_messages)
-        self.default_chain = DefaultChain(self.llm, self.handler, self.retriever, self.retrieval_threshold,
+        self.classification_chain = ClassificationChain(self.llm, self.handler, "ClassificationChain")
+        self.document_chain = DocumentChain(self.llm, self.handler, "DocumentChain", self.history, self.num_messages)
+        self.conversational_chain = ConversationalChain(self.llm, self.handler, "ConversationalChain", self.history, self.num_messages)
+        self.default_chain = DefaultChain(self.llm, self.handler, "DefaultChai", self.retriever, self.retrieval_threshold,
                                           self.document_chain, self.conversational_chain)
-        self.summarization_chain = SummarizationChain(self.llm, self.handler, self.history, self.num_messages)
-        self.followup_chain = FollowupChain(self.llm, self.handler, self.history, self.num_messages,
+        self.summarization_chain = SummarizationChain(self.llm, self.handler, "SummarizationChain", self.history, self.num_messages)
+        self.followup_chain = FollowupChain(self.llm, self.handler, "FollowupChain", self.history, self.num_messages,
                                             self.retriever, self.retrieval_threshold, self.followup_threshold, self.embedding_threshold)
-        print("\33[1;36m[ChainOfThoughts]\33[0m: Chain inizializzata")
+        print("\33[1;34m[ChainOfThoughts]\33[0m: Chain inizializzata")
 
     def branch(self):
         return RunnableBranch(

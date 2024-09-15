@@ -20,7 +20,7 @@ class Retriever():
             base_compressor=compressor,
             base_retriever=self.retriever
         )
-        print("\33[1;36m[Retriever]\33[0m: Retriever inizializzato")
+        print("\33[1;34m[Retriever]\33[0m: Retriever inizializzato")
     
     def retrieve(self, query: str, threshold=0) -> list[Document]:
         docs = self.compression_retriever.invoke(query)

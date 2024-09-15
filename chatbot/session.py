@@ -17,12 +17,11 @@ class Session():
             st.header(header)
         
         self.state = st.session_state
-        print("\33[1;36m[Session]\33[0m: Sessione inizializzata")
         
     def initialize_session_state(self):
         if "is_initialized" not in self.state or not self.state.is_initialized:
             self.state.config = load_config()
-            print("\33[1;34m[Session]\33[0m: Avvio inizializzazione")
+            print("\33[1;36m[Session]\33[0m: Avvio inizializzazione")
             
             # Messaggi
             self.state.messages = []
@@ -57,6 +56,7 @@ class Session():
             self.state.chain = ChainOfThoughts(
                 llm=self.state.llm,
                 handler=self.state.handler,
+                name="ChainOfThoughts",
                 history=self.state.history,
                 num_messages=self.state.config['history_size'],
                 retriever=self.state.retriever,
