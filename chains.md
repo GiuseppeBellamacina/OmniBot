@@ -13,34 +13,34 @@ classDiagram
         + handler: Handler
         + name: str
 
-        + Chain(): Chain
-        + run(): Runnable
-        + invoke(): dict
-        + stream(): dict
-        + fill_prompt(): Runnable
+        + Chain() Chain
+        + run() Runnable
+        + invoke() dict
+        + stream() dict
+        + fill_prompt() Runnable
     }
 
     class HistoryAwareChain {
         + history: ChatHistory
         + num_messages: int
 
-        + HistoryAwareChain(): HistoryAwareChain
-        + get_history_ctx(): str
-        + history_chain(): Runnable
+        + HistoryAwareChain() HistoryAwareChain
+        + get_history_ctx() str
+        + history_chain() Runnable
     }
 
     class ConversationalChain {
-        + ConversationalChain(): ConversationalChain
-        + sequence(): Runnable
-        + answer(): Runnable
-        + run(): Runnable
+        + ConversationalChain() ConversationalChain
+        + sequence() Runnable
+        + answer() Runnable
+        + run() Runnable
     }
 
     class DocumentChain {
-        + DocumentChain(): DocumentChain
-        + sequence(): Runnable
-        + answer(): Runnable
-        + run(): Runnable
+        + DocumentChain() DocumentChain
+        + sequence() Runnable
+        + answer() Runnable
+        + run() Runnable
     }
 
     class DefaultChain {
@@ -49,26 +49,26 @@ classDiagram
         + document_chain: DocumentChain
         + conversational_chain: ConversationalChain
 
-        + DefaultChain(): DefaultChain
-        + context(): Runnable
-        + branch(): Runnable
-        + run(): Runnable
+        + DefaultChain() DefaultChain
+        + context() Runnable
+        + branch() Runnable
+        + run() Runnable
     }
 
     class ClassificationChain {
-        + ClassificationChain(): ClassificationChain
-        + fill_prompt(): Runnable
-        + sequence(): Runnable
-        + classify(): Runnable
-        + run(): Runnable
+        + ClassificationChain() ClassificationChain
+        + fill_prompt() Runnable
+        + sequence() Runnable
+        + classify() Runnable
+        + run() Runnable
     }
 
     class SummarizationChain {
-        + SummarizationChain(): SummarizationChain
-        + fill_prompt(): Runnable
-        + sequence(): Runnable
-        + answer(): Runnable
-        + run(): Runnable
+        + SummarizationChain() SummarizationChain
+        + fill_prompt() Runnable
+        + sequence() Runnable
+        + answer() Runnable
+        + run() Runnable
     }
 
     class FollowUpChain {
@@ -77,13 +77,13 @@ classDiagram
         + follow_up_threshold: float
         + embedding_threshold: float
 
-        + FollowUpChain(): FollowUpChain
-        + fill_prompt(): Runnable
-        + context(): Runnable
-        + sequence(): Runnable
-        + answer(): Runnable
-        + get_ctx(): list[Document]
-        + run(): Runnable
+        + FollowUpChain() FollowUpChain
+        + fill_prompt() Runnable
+        + context() Runnable
+        + sequence() Runnable
+        + answer() Runnable
+        + get_ctx() list[Document]
+        + run() Runnable
     }
 
     class ChainOfThoughts {
@@ -98,11 +98,11 @@ classDiagram
         + classification_chain: ClassificationChain
         + default_chain: DefaultChain
 
-        + ChainOfThoughts(): ChainOfThoughts
-        + branch(): Runnable
-        + branch_no_history(): Runnable
-        + isFirst(): Runnable
-        + run(): Runnable
+        + ChainOfThoughts() ChainOfThoughts
+        + branch() Runnable
+        + branch_no_history() Runnable
+        + isFirst() Runnable
+        + run() Runnable
     }
 
     ChainInterface <|.. Chain
