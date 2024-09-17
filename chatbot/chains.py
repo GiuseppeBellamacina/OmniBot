@@ -99,6 +99,7 @@ class HistoryAwareChain(Chain):
                 elif isinstance(msg, HumanMessage):
                     m = "HUMAN: " + msg.content
                 history_ctx.append(m)
+            history_ctx.append("NON ripetere i contenuti dei messaggi precedenti.")
             return "\n".join(history_ctx)
         else:
             return ""
@@ -151,6 +152,7 @@ Rispondi sempre in ITALIANO, e solo alle domande che possono avere a che fare co
 ESEMPI: piloti, aerei, carriere, accademia, corsi, concorsi, bandi... \
 NON rispondere ad una domanda con un'altra domanda. \
 L'utente NON deve sapere che stai rispondendo grazie ai seguenti documenti. \
+Se possibile rendi la tua risposta strutturata, utilizzando elenco puntato o numerato. \
 
 {history_ctx}
 
@@ -275,6 +277,7 @@ SUMMARIZATION_TEMPLATE = """
 Stai parlando con un utente e devi fare un riassunto delle informazioni di cui avete discusso. \
 L'utente ti ha chiesto di farlo con questa domanda: "{input}".
 NON ripetere la domanda dell'utente. \
+Se possibile rendi la tua risposta strutturata, utilizzando elenco puntato o numerato. \
 Rispondi in ITALIANO (o nella lingua della domanda) rispettando la richiesta dell'utente e utilizzando le informazioni seguenti. \
 
 {history_ctx}
@@ -318,6 +321,7 @@ L'utente ti ha chiesto di farlo con questa domanda: "{input}". \
 
 {history_ctx}
 NON ripetere la domanda dell'utente e NON dire che sai che lui vuole un approfondimento. \
+Se possibile rendi la tua risposta strutturata, utilizzando elenco puntato o numerato. \
 Rispondi in ITALIANO (o nella lingua della domanda) rispettando la richiesta dell'utente e utilizzando le informazioni seguenti. \
 CONTESTO:
 

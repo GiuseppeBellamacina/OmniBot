@@ -8,6 +8,7 @@ from utilities import (
 )
 
 import streamlit as st
+import os
 
 class Session():
     def __init__(self, title: str, icon: str, header: str = ""):
@@ -17,9 +18,15 @@ class Session():
             st.header(header)
         
         self.state = st.session_state
+    
+    def limit_history(self, history_size: int):
+        if len(self.state.history.messages) > history_size:
+            print(f"\33[1;33m[Session]\33[0m: Limitazione della history a {history_size} messaggi")
+            self.state.history.messages = self.state.history.messages[-history_size:]
         
     def initialize_session_state(self):
         if "is_initialized" not in self.state or not self.state.is_initialized:
+            self.state.is_initialized = False
             self.state.config = load_config()
             print("\33[1;36m[Session]\33[0m: Avvio inizializzazione")
             
@@ -39,7 +46,7 @@ class Session():
             self.state.retriever = Retriever(self.state.config)
             if self.state.retriever is None:
                 print("\33[1;31m[Session]\33[0m: Retriever non inizializzato")
-                return
+                return self.state.is_initialized
             print("\33[1;32m[Session]\33[0m: Retriever inizializzato")
 
             # LLM
@@ -68,6 +75,7 @@ class Session():
             print("\33[1;32m[Session]\33[0m: Chain inizializzata")
             self.state.is_initialized = True
             print("\33[1;32m[Session]\33[0m: Inizializzazione completata")
+            return self.state.is_initialized
     
     def update(self):
         if "is_initialized" not in self.state or not self.state.is_initialized:
@@ -108,6 +116,7 @@ class Session():
 
         if (faq_prompt == ""):
             if prompt := st.chat_input("Scrivi un messaggio...", key="first_question"):
+                os.system("cls" if os.name == "nt" else "clear")
                 self.state.messages.append({
                     "role": "human",
                     "content": prompt
@@ -125,18 +134,17 @@ class Session():
                 self.state.history.add_message_from_user(prompt)
                 self.state.history.add_message_from_response(response)
                 
-                # Limit history
-                history_size = self.state.config['history_size']
-                if len(self.state.history.messages) > history_size:
-                    print(f"\33[1;33m[Session]\33[0m: Limitazione della history a {history_size} messaggi")
-                    self.state.history.messages = self.state.history.messages[-history_size:]
+                self.limit_history(self.state.config['history_size'])
                 
                 self.state.messages.append({
                     "role": "ai",
                     "content": response.get('answer', None),
                     "response_time": self.state.handler.time
                 })
+                
+                st.rerun()
         else:
+            os.system("cls" if os.name == "nt" else "clear")
             self.state.messages.append({
                     "role": "human",
                     "content": faq_prompt
@@ -155,11 +163,7 @@ class Session():
             self.state.history.add_message_from_user(faq_prompt)
             self.state.history.add_message_from_response(response)
                 
-            # Limit history
-            history_size = self.state.config['history_size']
-            if len(self.state.history.messages) > history_size:
-                print(f"\33[1;33m[Session]\33[0m: Limitazione della history a {history_size} messaggi")
-                self.state.history.messages = self.state.history.messages[-history_size:]
+            self.limit_history(self.state.config['history_size'])
             
             self.state.messages.append({
                 "role": "ai",
@@ -168,4 +172,4 @@ class Session():
             })
             
             faq_prompt = ""
-            st.rerun()
+            st.rerun() # se lo tolgo, non si aggiorna la chat

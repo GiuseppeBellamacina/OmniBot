@@ -1,9 +1,7 @@
 from session import Session
 from dotenv import load_dotenv, find_dotenv
-import os
 
 def main():
-    #os.system("cls" if os.name == "nt" else "clear")
     print("\33[1;36m[Main]\33[0m: Avvio del programma")
     
     load_dotenv(find_dotenv())

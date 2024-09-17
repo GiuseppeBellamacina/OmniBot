@@ -78,14 +78,16 @@ class ChatHistory():
         else:
             return self.get_last_message_ctx(threshold)
     
-    def get_all_messages(self): # si usa con la summarization chain
+    def get_all_messages(self):
+        if self.messages == []:
+            return []
         return [msg.message for msg in self.messages]
 
     def get_last_messages(self, n: int):
         if self.messages == []:
             return []
-        elif n > len(self.messages):
-            return self.get_all_messages()
+        if n > len(self.messages):
+            n = len(self.messages)
         return [msg.message for msg in self.messages[-n:]]
 
     def clear(self):
