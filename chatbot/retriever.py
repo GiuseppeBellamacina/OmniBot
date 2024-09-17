@@ -13,15 +13,16 @@ class Retriever():
             path=config['db'],
             embeddings=self.embedder
         )
-        self.retriever = self.vectorstore.as_retriever(search_type='similarity', search_kwargs={'k': 10})
+        self.retriever = self.vectorstore.as_retriever(search_type='similarity', search_kwargs={'k': config['k']})
         
-        compressor = CohereRerank(model=config['reranker'], top_n=6)
-        self.compression_retriever = ContextualCompressionRetriever(
+        compressor = CohereRerank(model=config['reranker'], top_n=config['top_n'])
+        self.compression_retriever = ContextualCompressionRetriever( # TODO si puo fare un override di _get_relevant_documents (o invoke -> meglio) per fare quella cosa
             base_compressor=compressor,
             base_retriever=self.retriever
         )
         print("\33[1;34m[Retriever]\33[0m: Retriever inizializzato")
     
+    @debug()
     def retrieve(self, query: str, threshold=0) -> list[Document]:
         docs = self.compression_retriever.invoke(query)
         if threshold != 0:
@@ -32,6 +33,7 @@ class Retriever():
     def filter(self, docs: list[Document], threshold: float) -> list[Document]:
         return [d for d in docs if d.metadata.get('relevance_score') > threshold]
     
+    @debug()
     def find_similar(self, doc: Document, threshold=0) -> list[Document]:
         embedded_doc = self.embedder.embed_documents([doc.page_content])[0]
         similar_docs = self.vectorstore.similarity_search_with_score_by_vector(embedded_doc)

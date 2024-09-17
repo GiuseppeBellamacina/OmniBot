@@ -15,3 +15,6 @@ reranker: 'rerank-multilingual-v3.0'
 retrieval_threshold: 0.7
 followup_threshold: 0.4
 embedding_threshold: 0.35
+
+k: 10 # standard retriever documents
+top_n: 6 # compressor documents
