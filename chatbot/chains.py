@@ -145,105 +145,24 @@ class ConversationalChain(HistoryAwareChain):
             | self.answer()
         ).assign(signature=lambda x: self.name)
         ).with_config(run_name=self.name)
-
-DOCUMENT_TEMPLATE = """ \
-Tu sei un assistente che risponde alle domande relative all'Aeronautica Militare Italiana. \
-Rispondi sempre in ITALIANO, e solo alle domande che possono avere a che fare con l'aeronautica:
-ESEMPI: piloti, aerei, carriere, accademia, corsi, concorsi, bandi... \
-NON rispondere ad una domanda con un'altra domanda. \
-Se la domanda NON è inerente al contesto, rispondi con "Non so rispondere a questa domanda". \
-L'utente NON deve sapere che stai rispondendo grazie ai seguenti documenti. \
-Se possibile rendi la tua risposta strutturata, utilizzando elenco puntato o numerato. \
-
-{history_ctx}
-
-CONTESTO:
-{context}
-"""
-
-class DocumentChain(HistoryAwareChain):
-    """
-    It's a RAG Chain with context passed as parameter.
-    To use it it is necessary to specify:
-    - input
-    - context
-    """
-    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory, num_messages: int):
-        super().__init__(llm, handler, name, history, num_messages)
-        print("\33[1;34m[DocumentChain]\33[0m: Chain inizializzata")
-        
-    def sequence(self):
-        return RunnableSequence(
-            self.fill_prompt(DOCUMENT_TEMPLATE),
-            self.llm
-        ).with_config(run_name="DocumentSequence")
-    
-    def answer(self):
-        return RunnablePassthrough.assign(
-            answer = RunnableLambda(lambda x: self.sequence())
-        ).with_config(run_name="DocumentAnswer")
-    
-    def run(self):
-        return ((
-            RunnableLambda(lambda x: self.history_chain())
-            | self.answer()
-        ).assign(signature=lambda x: self.name)
-        ).with_config(run_name=self.name)
-
-class DefaultChain(Chain):
-    """
-    It's the chain which manages the DocumentChain and the ConversationalChain.
-    To use it it is necessary to specify:
-    - input
-    """
-    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str,
-                 retriever: Retriever, threshold: float, document_chain: Runnable, conversational_chain: Runnable):
-        super().__init__(llm, handler, name)
-        self.retriever = retriever
-        self.threshold = threshold
-
-        self.document_chain = document_chain
-        self.conversational_chain = conversational_chain
-        print("\33[1;34m[DefaultChain]\33[0m: Chain inizializzata")
-
-    def context(self):
-        return RunnablePassthrough.assign(
-            context = RunnableLambda(lambda x: self.retriever.retrieve(x.get('input'), self.threshold))
-        ).with_config(run_name="DefaultContext")
-    
-    def branch(self):
-        return RunnableBranch(
-            (RunnableLambda(lambda x: x.get('context') != []),
-                self.document_chain.run()
-            ),
-            self.conversational_chain.run()
-        ).with_config(run_name="DefaultBranch")
-    
-    def run(self):
-        return ((
-            RunnableLambda(lambda x: self.context())
-            | self.branch()
-        ).assign(signature=lambda x: self.name)
-        ).with_config(run_name=self.name)
-    
+  
 CLASSIFICATION_TEMPLATE = """
-Stai parlando con un utente e devi classificare le sue domande in quattro categorie: "summary", "followup", "document" e "conversational".
+Stai parlando con un utente e devi classificare le sue domande in 3 categorie: "summary", "document" e "conversational".
 
-- Le domande "summary" richiedono un riassunto delle informazioni precedenti. Esempi: "Puoi fare un riassunto?", "Riassumi ciò di cui abbiamo parlato."
-- Le domande "followup" sono domande che si basano sul contesto degli ultimi messaggi. Esempi: "Dimmi di più", "Approfondisci questo punto, "Fammi capire meglio", "Perché è così?", "Continua".
-- Le domande "document" sono domande che chiedono di argomenti specifici basati su documenti forniti. Esempi: "Qual è la capitale della Francia?", "Come si usa un saldatore?."
+- Le domande "summary" richiedono un riassunto delle informazioni precedenti. Esempi: "Puoi fare un riassunto?", "Riassumi ciò di cui abbiamo parlato.", "Riassumi la conversazione".
+- Le domande "document" sono domande che chiedono di argomenti specifici basati su documenti forniti. Esempi: "Qual è la capitale della Francia?", "Come si usa un saldatore?, "Dimmi di più", "Approfondisci questo punto, "Fammi capire meglio", "Perché è così?", "Continua".
 - Le domande "conversational" sono domande che NON sono basate su documenti forniti. Esempi: "Ciao", "Che cosa sai fare?", "Come ti chiami?", "Chi ti ha creato?".
 
 DOMANDA:
 {input}
 
 Rispondi con un JSON che indica il tipo di domanda.
-Esempio: {{"type": "summary"}} o {{"type": "followup"}} o {{"type": "document"}} o {{"type": "conversational"}}
+Esempio: {{"type": "summary"}} o {{"type": "document"}} o {{"type": "conversational"}}
 """
 
 class ClassificationChain(Chain):
     """
-    It's the chain which classifies the user's questions in three categories: "summary", "followup", and "standard".
+    It's the chain which classifies the user's questions in three categories: "summary", "document", and "conversational".
     To use it it is necessary to specify:
     - input
     """
@@ -315,39 +234,41 @@ class SummarizationChain(HistoryAwareChain):
             | self.answer()
         ).assign(signature=lambda x: self.name)
         ).with_config(run_name=self.name)
-
-FOLLOWUP_TEMPLATE = """
-Stai parlando con un utente e devi approfondire un punto specifico. \
-L'utente ti ha chiesto di farlo con questa domanda: "{input}". \
+    
+RAG_TEMPLATE = """ \
+Tu sei un assistente che risponde alle domande relative all'Aeronautica Militare Italiana. \
+Rispondi sempre in ITALIANO, e solo alle domande che possono avere a che fare con l'aeronautica:
+ESEMPI: piloti, aerei, carriere, accademia, corsi, concorsi, bandi... \
+NON rispondere ad una domanda con un'altra domanda. \
+Se la domanda NON è inerente al contesto, rispondi con "Non so rispondere a questa domanda". \
+L'utente NON deve sapere che stai rispondendo grazie ai seguenti documenti. \
+Se possibile rendi la tua risposta strutturata, utilizzando elenco puntato o numerato. \
 
 {history_ctx}
-NON ripetere la domanda dell'utente e NON dire che sai che lui vuole un approfondimento. \
-Se possibile rendi la tua risposta strutturata, utilizzando elenco puntato o numerato. \
-Rispondi in ITALIANO (o nella lingua della domanda) rispettando la richiesta dell'utente e utilizzando le informazioni seguenti. \
-CONTESTO:
 
+CONTESTO:
 {context}
 """
 
-class FollowupChain(HistoryAwareChain):
+class RAGChain(HistoryAwareChain):
     """
-    It's the chain which manages the followup questions.
+    It's the chain which manages the RAG questions.
     To use it it is necessary to specify:
     - input
     """
     def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory, num_messages: int,
-                 retriever: Retriever, retrieval_threshold: float, followup_threshold: float, embedding_threshold: float):
+                 retriever: Retriever, retrieval_threshold: float, followup_threshold: float, distance_threshold: float):
         super().__init__(llm, handler, name, history, num_messages)
         self.retriever = retriever
         
         self.retrieval_threshold = retrieval_threshold
         self.followup_threshold = followup_threshold
-        self.embedding_threshold = embedding_threshold
-        print("\33[1;34m[FollowupChain]\33[0m: Chain inizializzata")
+        self.distance_threshold = distance_threshold
+        print("\33[1;34m[RAGChain]\33[0m: Chain inizializzata")
     
     #* Override
     def fill_prompt(self):
-        return PromptTemplate.from_template(FOLLOWUP_TEMPLATE).with_config(run_name="ChatPromptTemplate")
+        return PromptTemplate.from_template(RAG_TEMPLATE).with_config(run_name="ChatPromptTemplate")
     
     def context(self):
         return RunnablePassthrough.assign(
@@ -380,17 +301,8 @@ class FollowupChain(HistoryAwareChain):
         if folloup_ctx:
             relevant_docs.extend(folloup_ctx)
         # prendo i documenti che sono simili alla domanda dell'utente
-        docs = self.retriever.retrieve(user_input, self.retrieval_threshold)
+        docs = self.retriever.invoke(user_input)
         relevant_docs.extend(docs)
-        # prendo i documenti simili ai documenti trovati
-        augmented_ctx = []
-        for doc in relevant_docs:
-            similar_docs = self.retriever.find_similar(doc, self.embedding_threshold)
-            if similar_docs:
-                augmented_ctx.extend(similar_docs)
-        # se ci sono documenti simili, li aggiungo al contesto
-        if augmented_ctx:
-            relevant_docs.extend(augmented_ctx)
         # rimuovo i documenti duplicati
         unique_docs = {}
         for doc in relevant_docs:
@@ -407,22 +319,19 @@ class ChainOfThoughts(HistoryAwareChain):
     - input
     """
     def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory, num_messages: int,
-                 retriever: Retriever, retrieval_threshold: float, followup_threshold: float, embedding_threshold: float):
+                 retriever: Retriever, retrieval_threshold: float, followup_threshold: float, distance_threshold: float):
         super().__init__(llm, handler, name, history, num_messages)
         self.retriever = retriever
         
         self.retrieval_threshold = retrieval_threshold
         self.followup_threshold = followup_threshold
-        self.embedding_threshold = embedding_threshold
+        self.distance_threshold = distance_threshold
 
         self.classification_chain = ClassificationChain(self.llm, self.handler, "ClassificationChain")
-        self.document_chain = DocumentChain(self.llm, self.handler, "DocumentChain", self.history, self.num_messages)
         self.conversational_chain = ConversationalChain(self.llm, self.handler, "ConversationalChain", self.history, self.num_messages)
-        self.default_chain = DefaultChain(self.llm, self.handler, "DefaultChai", self.retriever, self.retrieval_threshold,
-                                          self.document_chain, self.conversational_chain)
         self.summarization_chain = SummarizationChain(self.llm, self.handler, "SummarizationChain", self.history, self.num_messages)
-        self.followup_chain = FollowupChain(self.llm, self.handler, "FollowupChain", self.history, self.num_messages,
-                                            self.retriever, self.retrieval_threshold, self.followup_threshold, self.embedding_threshold)
+        self.RAG_chain = RAGChain(self.llm, self.handler, "RAGChain", self.history, self.num_messages,
+                                            self.retriever, self.retrieval_threshold, self.followup_threshold, self.distance_threshold)
         print("\33[1;34m[ChainOfThoughts]\33[0m: Chain inizializzata")
 
     def branch(self):
@@ -430,40 +339,18 @@ class ChainOfThoughts(HistoryAwareChain):
             (RunnableLambda(lambda x: x.get('type') == 'summary'),
                 self.summarization_chain.run()
             ),
-            (RunnableLambda(lambda x: x.get('type') == 'followup'),
-                self.followup_chain.run()
+            (RunnableLambda(lambda x: x.get('type') == 'document'),
+                self.RAG_chain.run()
             ),
             (RunnableLambda(lambda x: x.get('type') == 'conversational'),
                 self.conversational_chain.run()
             ),
-            (RunnableLambda(lambda x: x.get('type') == 'document'),
-                self.default_chain.run()
-            ),
-            self.default_chain.run()
+            self.conversational_chain.run()
         ).with_config(run_name="ChainOfThoughtsBranch")
-
-    def branch_no_history(self):
-        return RunnableBranch(
-            (RunnableLambda(lambda x: x.get('type') == 'document'),
-                self.default_chain.run()
-            ),
-            (RunnableLambda(lambda x: x.get('type') == 'conversational'),
-                self.conversational_chain.run()
-            ),
-            self.default_chain.run()
-        ).with_config(run_name="ChainOfThoughtsBranch_1EX")
-    
-    def isFirst(self):
-        return RunnableBranch(
-            (RunnableLambda(lambda x: self.history.messages != []),
-                self.branch()
-            ),
-            self.branch_no_history()
-        ).with_config(run_name="ChainOfThoughtsIsFirst")
     
     def run(self):
         return ((
             self.classification_chain.run()
-            | self.isFirst()
+            | self.branch()
         ).assign(signature=lambda x: self.name)
         ).with_config(run_name=self.name)

@@ -36,25 +36,6 @@ classDiagram
         + run() Runnable
     }
 
-    class DocumentChain {
-        + DocumentChain() DocumentChain
-        + sequence() Runnable
-        + answer() Runnable
-        + run() Runnable
-    }
-
-    class DefaultChain {
-        + retriever: Retriever
-        + threshold: float
-        + document_chain: DocumentChain
-        + conversational_chain: ConversationalChain
-
-        + DefaultChain() DefaultChain
-        + context() Runnable
-        + branch() Runnable
-        + run() Runnable
-    }
-
     class ClassificationChain {
         + ClassificationChain() ClassificationChain
         + fill_prompt() Runnable
@@ -71,13 +52,13 @@ classDiagram
         + run() Runnable
     }
 
-    class FollowUpChain {
+    class RAGChain {
         + retriever: Retriever
         + retrieval_threshold: float
         + follow_up_threshold: float
         + embedding_threshold: float
 
-        + FollowUpChain() FollowUpChain
+        + RAGChain() FollowUpChain
         + fill_prompt() Runnable
         + context() Runnable
         + sequence() Runnable
@@ -91,37 +72,26 @@ classDiagram
         + retrieval_threshold: float
         + follow_up_threshold: float
         + embedding_threshold: float
-        + document_chain: DocumentChain
-        + conversational_chain: ConversationalChain
+        + RAG_chain: ConversationalChain
         + follow_up_chain: FollowUpChain
         + summarization_chain: SummarizationChain
         + classification_chain: ClassificationChain
-        + default_chain: DefaultChain
 
         + ChainOfThoughts() ChainOfThoughts
         + branch() Runnable
-        + branch_no_history() Runnable
-        + isFirst() Runnable
         + run() Runnable
     }
 
     ChainInterface <|.. Chain
     Chain <|-- HistoryAwareChain
     HistoryAwareChain <|-- ConversationalChain
-    HistoryAwareChain <|-- DocumentChain
-    Chain <|-- DefaultChain
     Chain <|-- ClassificationChain
     HistoryAwareChain <|-- SummarizationChain
-    HistoryAwareChain <|-- FollowUpChain
+    HistoryAwareChain <|-- RAGChain
     HistoryAwareChain <|-- ChainOfThoughts
 
     ChainOfThoughts o-- ConversationalChain
-    ChainOfThoughts o-- DocumentChain
-    ChainOfThoughts o-- FollowUpChain
+    ChainOfThoughts o-- RAGChain
     ChainOfThoughts o-- SummarizationChain
     ChainOfThoughts o-- ClassificationChain
-    ChainOfThoughts o-- DefaultChain
-
-    DefaultChain o-- ConversationalChain
-    DefaultChain o-- DocumentChain
 ```

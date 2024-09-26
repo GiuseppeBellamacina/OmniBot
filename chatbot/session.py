@@ -1,4 +1,4 @@
-from retriever import Retriever
+from retriever import RetrieverBuilder
 from langchain_ollama.llms import OllamaLLM
 from chains import ChainOfThoughts
 from utilities import (
@@ -43,7 +43,7 @@ class Session():
             print("\33[1;32m[Session]\33[0m: StreamHandler inizializzato")
             
             # Retriever
-            self.state.retriever = Retriever(self.state.config)
+            self.state.retriever = RetrieverBuilder(self.state.config).build()
             if self.state.retriever is None:
                 print("\33[1;31m[Session]\33[0m: Retriever non inizializzato")
                 return self.state.is_initialized
@@ -69,7 +69,7 @@ class Session():
                 retriever=self.state.retriever,
                 retrieval_threshold=self.state.config['retrieval_threshold'],
                 followup_threshold=self.state.config['followup_threshold'],
-                embedding_threshold=self.state.config['embedding_threshold']
+                distance_threshold=self.state.config['distance_threshold']
             )
             
             print("\33[1;32m[Session]\33[0m: Chain inizializzata")

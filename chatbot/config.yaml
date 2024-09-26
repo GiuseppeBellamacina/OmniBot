@@ -1,7 +1,7 @@
 db: './db'
 
 model:
-  name: 'mistral-nemo'
+  name: 'Dolphin'
   base_url: 'http://localhost:11434'
   temperature: 0
   num_ctx: 8192
@@ -13,8 +13,8 @@ embedder: 'embed-multilingual-v3.0'
 reranker: 'rerank-multilingual-v3.0'
 
 retrieval_threshold: 0.7
-followup_threshold: 0.4
-embedding_threshold: 0.35
+followup_threshold: 0.45
+distance_threshold: 0.2
 
 k: 10 # standard retriever documents
 top_n: 6 # compressor documents

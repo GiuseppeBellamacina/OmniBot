@@ -1,9 +1,9 @@
 from langchain_community.docstore import InMemoryDocstore
+from langchain_community.vectorstores import FAISS
 from langchain_cohere import CohereEmbeddings
 from data_manager import DataList
 from db_maker import DBMaker
 from utilities import load_config
-from vectorstore import CustomStore
 from dotenv import load_dotenv, find_dotenv
 import faiss
 import os
@@ -34,7 +34,7 @@ def main():
     embedder = CohereEmbeddings(model=config["embedder"])
 
     index = faiss.IndexFlatL2(len(embedder.embed_query("index")))
-    vectorstore = CustomStore(
+    vectorstore = FAISS(
         embedding_function=embedder,
         index=index,
         docstore=InMemoryDocstore(),

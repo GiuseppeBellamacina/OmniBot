@@ -1,13 +1,13 @@
 from data_manager import Data
 from splitter import Splitter
-from langchain_community.vectorstores import VectorStore
+from langchain_community.vectorstores import FAISS
 from tqdm import tqdm
 
 class DBMaker():
     """
     Create the database containing the vectors of the data.
     """
-    def __init__(self, config: dict, vectorstore: VectorStore):
+    def __init__(self, config: dict, vectorstore: FAISS):
         self.config = config
         self.vectorstore = vectorstore
         print("\33[1;34m[DBMaker]\33[0m: Maker del database inizializzato")
@@ -21,7 +21,7 @@ class DBMaker():
         batches = self.batch(docs)
         for batch in tqdm(batches, desc="Caricamento documenti..."):
             self.vectorstore.add_documents(batch)
-        self.vectorstore.save(self.config['paths']['db'])
+        self.vectorstore.save_local(self.config['paths']['db'])
     
     def batch(self, chunks, n_max=10000):
         batches = []
