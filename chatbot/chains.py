@@ -302,15 +302,17 @@ class RAGChain(HistoryAwareChain):
             relevant_docs.extend(folloup_ctx)
         # prendo i documenti che sono simili alla domanda dell'utente
         docs = self.retriever.invoke(user_input)
-        relevant_docs.extend(docs)
-        # rimuovo i documenti duplicati
-        unique_docs = {}
-        for doc in relevant_docs:
-            try:
-                unique_docs[doc.metadata['id']] = doc
-            except Exception as e:
-                raise e
-        return list(unique_docs.values())
+        if docs:
+            relevant_docs.extend(docs)
+            # rimuovo i documenti duplicati
+            unique_docs = {}
+            for doc in relevant_docs:
+                try:
+                    unique_docs[doc.metadata['id']] = doc
+                except Exception as e:
+                    raise e
+            return list(unique_docs.values())
+        return []
 
 class ChainOfThoughts(HistoryAwareChain):
     """
