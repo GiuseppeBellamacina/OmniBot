@@ -46,8 +46,12 @@ class Splitter():
         try:
             loader = WebBaseLoader(
                 web_paths=(data.path,),
-                bs_kwargs=dict(parse_only=bs4.SoupStrainer(class_=(data.extra)),
-                encoding="utf-8")
+                bs_kwargs=dict(
+                    parse_only=bs4.SoupStrainer(
+                        class_=(data.extra)
+                    )
+                ),
+                encoding="utf-8"
             )
             splitter = RecursiveCharacterTextSplitter(chunk_size=data.chunk_size, chunk_overlap=data.chunk_overlap)
             loaded = loader.load()
