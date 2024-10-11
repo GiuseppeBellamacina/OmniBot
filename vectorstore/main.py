@@ -17,19 +17,19 @@ def main():
     print("\33[1;32m[Main]\33[0m: File di configurazione caricato")
     
     # Load data
-    content_data_list = DataList(config)
-    content_data_list.add_dir(
+    data_list = DataList(config)
+    data_list.add_dir(
         path="txts_parags/",
         chunk_size=1000,
         chunk_overlap=0
     )
-    content_data_list.add(path="link.txt")
+    data_list.add(path="link.txt")
     
     # Check if data is valid
-    if not content_data_list.test():
+    if not data_list.test():
         print("\33[1;31m[Main]\33[0m: Errore nei dati")
         return
-    data = content_data_list.get_data()
+    data = data_list.get_data()
     
     embedder = CohereEmbeddings(model=config["embedder"])
 
