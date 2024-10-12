@@ -46,16 +46,18 @@ class Retriever(BaseRetriever):
             compressed_docs = self.compressor.compress_documents(
                 docs, query, callbacks=run_manager.get_child()
             )
-            filtered_docs = self.filter_by_similarity(compressed_docs, self.retrieval_threshold)
-            if filtered_docs:
-                similar_docs = self.search_by_vector(filtered_docs)
-                reranked_docs = self.compressor.compress_documents(
-                    similar_docs, query, callbacks=run_manager.get_child()
-                )
-                filtered_docs = self.filter_by_similarity(reranked_docs, self.retrieval_threshold)
-                return sorted(filtered_docs, key=lambda x: x.metadata.get('id'))
-        else:
-            return []
+            if compressed_docs:
+                filtered_docs = self.filter_by_similarity(compressed_docs, self.retrieval_threshold)
+                if filtered_docs:
+                    similar_docs = self.search_by_vector(filtered_docs)
+                    if similar_docs:
+                        reranked_docs = self.compressor.compress_documents(
+                            similar_docs, query, callbacks=run_manager.get_child()
+                        )
+                        if reranked_docs:
+                            filtered_docs = self.filter_by_similarity(reranked_docs, self.retrieval_threshold)
+                            return sorted(filtered_docs, key=lambda x: x.metadata.get('id'))
+        return []
         
     async def _aget_relevant_documents(
         self,
