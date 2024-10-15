@@ -39,26 +39,32 @@ class Retriever(BaseRetriever):
         Returns:
             Sequence of relevant documents
         """
-        docs = self.retriever.invoke(
-            query, config={"callbacks": run_manager.get_child()}, **kwargs
-        )
-        if docs:
-            compressed_docs = self.compressor.compress_documents(
-                docs, query, callbacks=run_manager.get_child()
-            )
-            if compressed_docs:
-                filtered_docs = self.filter_by_similarity(compressed_docs, self.retrieval_threshold)
-                if filtered_docs:
-                    similar_docs = self.search_by_vector(filtered_docs)
-                    if similar_docs:
-                        reranked_docs = self.compressor.compress_documents(
-                            similar_docs, query, callbacks=run_manager.get_child()
-                        )
-                        if reranked_docs:
-                            refiltered_docs = self.filter_by_similarity(reranked_docs, self.retrieval_threshold)
-                            if refiltered_docs:
-                                return sorted(refiltered_docs, key=lambda x: x.metadata.get('id'))
-        return []
+        callbacks = run_manager.get_child()
+        docs = self.retriever.invoke(query, config={"callbacks": callbacks}, **kwargs)
+        if not docs:
+            return []
+
+        compressed_docs = self.compressor.compress_documents(docs, query, callbacks=callbacks)
+        if not compressed_docs:
+            return []
+
+        filtered_docs = self.filter_by_similarity(compressed_docs, self.retrieval_threshold)
+        if not filtered_docs:
+            return []
+
+        similar_docs = self.search_by_vector(filtered_docs)
+        if not similar_docs:
+            return []
+
+        reranked_docs = self.compressor.compress_documents(similar_docs, query, callbacks=callbacks)
+        if not reranked_docs:
+            return []
+
+        refiltered_docs = self.filter_by_similarity(reranked_docs, self.retrieval_threshold)
+        if not refiltered_docs:
+            return []
+
+        return sorted(refiltered_docs, key=lambda x: x.metadata.get('id'))
         
     async def _aget_relevant_documents(
         self,
