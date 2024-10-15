@@ -55,8 +55,9 @@ class Retriever(BaseRetriever):
                             similar_docs, query, callbacks=run_manager.get_child()
                         )
                         if reranked_docs:
-                            filtered_docs = self.filter_by_similarity(reranked_docs, self.retrieval_threshold)
-                            return sorted(filtered_docs, key=lambda x: x.metadata.get('id'))
+                            refiltered_docs = self.filter_by_similarity(reranked_docs, self.retrieval_threshold)
+                            if refiltered_docs:
+                                return sorted(refiltered_docs, key=lambda x: x.metadata.get('id'))
         return []
         
     async def _aget_relevant_documents(
