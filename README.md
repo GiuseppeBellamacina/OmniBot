@@ -91,6 +91,7 @@ classDiagram
         + follow_up_threshold: float
         + embedding_threshold: float
         + rag_chain: RAGChain
+        + conversational_chain: ConversationalChain
         + summarization_chain: SummarizationChain
         + classification_chain: ClassificationChain
 
