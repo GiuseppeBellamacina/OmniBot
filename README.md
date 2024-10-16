@@ -20,7 +20,7 @@ This is a rappresentation of the `ChainOfThoughts` class which is the main chain
 classDiagram
     class ChainInterface {
         <<interface>>
-
+        
         + run()
         + invoke()
         + stream()
@@ -46,7 +46,7 @@ classDiagram
         + get_history_ctx() str
         + history_chain() Runnable
     }
-
+    
     class ConversationalChain {
         + ConversationalChain() ConversationalChain
         + sequence() Runnable
@@ -81,7 +81,7 @@ classDiagram
         + context() Runnable
         + sequence() Runnable
         + answer() Runnable
-        + get_ctx() list[Document]
+        + get_ctx() str
         + run() Runnable
     }
 
@@ -90,7 +90,7 @@ classDiagram
         + retrieval_threshold: float
         + follow_up_threshold: float
         + embedding_threshold: float
-        + RAG_chain: ConversationalChain
+        + rag_chain: RAGChain
         + summarization_chain: SummarizationChain
         + classification_chain: ClassificationChain
 
@@ -100,9 +100,11 @@ classDiagram
     }
 
     ChainInterface <|.. Chain
+
     Chain <|-- HistoryAwareChain
-    HistoryAwareChain <|-- ConversationalChain
     Chain <|-- ClassificationChain
+
+    HistoryAwareChain <|-- ConversationalChain
     HistoryAwareChain <|-- SummarizationChain
     HistoryAwareChain <|-- RAGChain
     HistoryAwareChain <|-- ChainOfThoughts
