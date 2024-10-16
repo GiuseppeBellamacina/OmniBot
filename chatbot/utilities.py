@@ -142,3 +142,6 @@ def load_config(file_path='config.yaml'):
     with open(file_path, 'r') as file:
         config = yaml.safe_load(file)
     return config
+
+def format_docs(docs):
+    return "\n\n".join([d.page_content for d in docs])

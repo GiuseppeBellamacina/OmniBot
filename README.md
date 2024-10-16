@@ -76,7 +76,7 @@ classDiagram
         + follow_up_threshold: float
         + embedding_threshold: float
 
-        + RAGChain() FollowUpChain
+        + RAGChain() RAGChain
         + fill_prompt() Runnable
         + context() Runnable
         + sequence() Runnable
@@ -91,7 +91,6 @@ classDiagram
         + follow_up_threshold: float
         + embedding_threshold: float
         + RAG_chain: ConversationalChain
-        + follow_up_chain: FollowUpChain
         + summarization_chain: SummarizationChain
         + classification_chain: ClassificationChain
 

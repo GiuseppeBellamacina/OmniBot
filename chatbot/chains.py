@@ -11,7 +11,7 @@ from langchain_core.runnables import (
 )
 
 from retriever import Retriever
-from utilities import ChatHistory, StdOutHandler
+from utilities import ChatHistory, StdOutHandler, format_docs
 from abc import ABC, abstractmethod
 
 class ChainInterface(ABC):
@@ -273,18 +273,18 @@ class RAGChain(HistoryAwareChain):
     def context(self):
         return RunnablePassthrough.assign(
             context = RunnableLambda(lambda x: self.get_ctx(x.get('input')))
-        ).with_config(run_name="FollowupContext")
+        ).with_config(run_name="RAGContext")
     
     def sequence(self):
         return RunnableSequence(
             self.fill_prompt(),
             self.llm
-        ).with_config(run_name="FollowupSequence")
+        ).with_config(run_name="RAGSequence")
     
     def answer(self):
         return RunnablePassthrough.assign(
             answer = RunnableLambda(lambda x: self.sequence())
-        ).with_config(run_name="FollowupAnswer")
+        ).with_config(run_name="RAGAnswer")
         
     def run(self):
         return ((
@@ -294,7 +294,7 @@ class RAGChain(HistoryAwareChain):
         ).assign(signature=lambda x: self.name)
         ).with_config(run_name=self.name)
     
-    def get_ctx(self, user_input) -> list[Document]:
+    def get_ctx(self, user_input) -> str:
         relevant_docs = []
         # prendo i documenti che sono stati usati per rispondere alle domande precedenti
         folloup_ctx = self.history.get_followup_ctx(user_input, self.followup_threshold)
@@ -311,8 +311,9 @@ class RAGChain(HistoryAwareChain):
                     unique_docs[doc.metadata['id']] = doc
                 except Exception as e:
                     raise e
-            return list(unique_docs.values())
-        return []
+            sorted_docs = sorted(unique_docs.values(), key=lambda d: d.metadata['id'])
+            return format_docs(sorted_docs)
+        return ''
 
 class ChainOfThoughts(HistoryAwareChain):
     """
