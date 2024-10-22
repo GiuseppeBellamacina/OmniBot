@@ -5,7 +5,9 @@ classDiagram
         
         + run()
         + invoke()
+        + ainvoke()
         + stream()
+        + astream()
     }
 
     class Chain {
@@ -16,17 +18,22 @@ classDiagram
         + Chain() Chain
         + run() Runnable
         + invoke() dict
+        + ainvoke() dict
         + stream() dict
+        + astream() dict
         + fill_prompt() Runnable
     }
 
     class HistoryAwareChain {
         + history: ChatHistory
-        + num_messages: int
 
         + HistoryAwareChain() HistoryAwareChain
-        + get_history_ctx() str
-        + history_chain() Runnable
+        + invoke() dict
+        + ainvoke() dict
+        + stream() dict
+        + astream() dict
+        + get_history_ctx() Runnable
+        + fill_prompt() Runnable
     }
     
     class ConversationalChain {
@@ -38,15 +45,12 @@ classDiagram
 
     class ClassificationChain {
         + ClassificationChain() ClassificationChain
-        + fill_prompt() Runnable
         + sequence() Runnable
-        + classify() Runnable
         + run() Runnable
     }
 
     class SummarizationChain {
         + SummarizationChain() SummarizationChain
-        + fill_prompt() Runnable
         + sequence() Runnable
         + answer() Runnable
         + run() Runnable
@@ -59,7 +63,6 @@ classDiagram
         + embedding_threshold: float
 
         + RAGChain() RAGChain
-        + fill_prompt() Runnable
         + context() Runnable
         + sequence() Runnable
         + answer() Runnable
@@ -79,6 +82,8 @@ classDiagram
 
         + ChainOfThoughts() ChainOfThoughts
         + branch() Runnable
+        + classify() Runnable
+        + extract_type() dict
         + run() Runnable
     }
 

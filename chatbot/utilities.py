@@ -20,16 +20,22 @@ class MessageWithDocs():
         return self.vector
 
 class ChatHistory():
-    def __init__(self):
-        self.messages = []
+    def __init__(self, limit: int = 0):
+        self.messages:  list[MessageWithDocs] = []
         self.vectorizer = None
+        self.limit = limit
     
-    def add_message_from_user(self, user_input: str): # * ste funzioni vanno chiamate dopo che il modello ha finito di rispondere
+    def limit_history(self):
+        if self.limit != 0:
+            self.messages = self.messages[-self.limit:] # lascio solo gli ultimi messaggi
+    
+    def add_message_from_user(self, user_input: dict): # * ste funzioni vanno chiamate dopo che il modello ha finito di rispondere
         message = MessageWithDocs(
-            message = HumanMessage(content = user_input),
+            message = HumanMessage(content = user_input.get('input', '')),
             documents = []
         )
         self.messages.append(message)
+        self.limit_history()
     
     def add_message_from_response(self, response: dict):
         message = MessageWithDocs(
@@ -37,12 +43,14 @@ class ChatHistory():
             documents = response.get('context', '')
         )
         self.messages.append(message)
+        self.limit_history()
     
     def train_vectorizer(self):
         all_texts = []
         for msg in self.messages:
             if msg.documents != []:
                 all_texts.append(msg.message.content + " " + " ".join(doc.page_content for doc in msg.documents))
+        print("\33[1;31mDA QUI NON FUNZIONA\33[0m") #! DEBUG
         self.vectorizer = TfidfVectorizer(encoding='utf-8').fit(all_texts)
     
     def get_message_ctx(self, message: str, threshold: float):
@@ -100,10 +108,11 @@ class StdOutHandler():
     """
     Class to manage token's stream
     """
-    def __init__(self):
+    def __init__(self, debug=False):
         self.containers = None
         self.text = ""
         self.time = 0
+        self.debug = debug
 
     def start(self, containers=None):
         self.time = time()
@@ -112,21 +121,32 @@ class StdOutHandler():
 
     def on_new_token(self, token: dict) -> None:
         token = token.get('answer', None)
+        if self.debug:
+            if token:
+                print(token, sep="", end="", flush=True)
         if token:
             self.text += token
-            self.containers[0].markdown(self.text)
+            if self.containers:
+                self.containers[0].markdown(self.text)
 
     def end(self):
         self.text = ""
         self.time = time() - self.time
         text_time = f"⏱ Tempo di risposta: {self.time:.2f} secondi"
-        self.containers[1].markdown(text_time)
+        if self.debug:
+            print(text_time)
+        if self.containers:
+            self.containers[1].markdown(text_time)
     
     def error(self, error: Exception):
         self.time = time() - self.time
-        self.containers[0].markdown(f"Errore: {error}")
-        self.containers[1].markdown(f"⏱ Tempo di risposta: {self.time:.2f} secondi")
         self.text = ""
+        if self.debug:
+            print(f"\33[1;31m[STDOUTHANDLER]\33[0m: {error}")
+            print(f"⏱ Tempo di risposta: {self.time:.2f} secondi")
+        if self.containers:
+            self.containers[0].markdown(f"Errore: {error}")
+            self.containers[1].markdown(f"⏱ Tempo di risposta: {self.time:.2f} secondi")
         raise error
 
 def load_config(file_path='config.yaml'):

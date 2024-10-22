@@ -1,7 +1,8 @@
-from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.documents.base import Document
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.prompts import (
+    PromptTemplate,
+    ChatPromptTemplate,
+    MessagesPlaceholder
+)
 from langchain_core.runnables import (
     RunnableBranch,
     RunnableLambda,
@@ -9,6 +10,7 @@ from langchain_core.runnables import (
     RunnablePassthrough,
     Runnable
 )
+from langchain_core.output_parsers import JsonOutputParser
 
 from retriever import Retriever
 from utilities import ChatHistory, StdOutHandler, format_docs
@@ -25,6 +27,14 @@ class ChainInterface(ABC):
     
     @abstractmethod
     def stream(self, input, containers=None):
+        pass
+    
+    @abstractmethod
+    async def ainvoke(self, input, containers=None):
+        pass
+    
+    @abstractmethod
+    async def astream(self, input, containers=None):
         pass
 
 class Chain(ChainInterface):
@@ -51,6 +61,22 @@ class Chain(ChainInterface):
             else:
                 raise e
             return {}
+    
+    async def ainvoke(self, input, containers=None):
+        try:
+            if self.handler:
+                self.handler.start(containers)
+            response = await self.run().ainvoke(input)
+            if self.handler:
+                self.handler.on_new_token(response)
+                self.handler.end()
+            return response
+        except Exception as e:
+            if self.handler:
+                self.handler.error(e)
+            else:
+                raise e
+            return {}
 
     def stream(self, input, containers=None):
         try:
@@ -61,9 +87,26 @@ class Chain(ChainInterface):
             for token in out:
                 if self.handler:
                     self.handler.on_new_token(token)
-                else: # ! DEBUG
-                    if token.get('answer'):
-                        print(token.get('answer'), sep='', end='', flush=True)
+                response += token
+            if self.handler:
+                self.handler.end()
+            return response
+        except Exception as e:
+            if self.handler:
+                self.handler.error(e)
+            else:
+                raise e
+            return {}
+    
+    async def astream(self, input, containers=None):
+        try:
+            if self.handler:
+                self.handler.start(containers)
+            response = {}
+            out = self.run().astream(input)
+            async for token in out:
+                if self.handler:
+                    self.handler.on_new_token(token)
                 response += token
             if self.handler:
                 self.handler.end()
@@ -76,38 +119,105 @@ class Chain(ChainInterface):
             return {}
     
     def fill_prompt(self, system_template: str):
+        return PromptTemplate.from_template(system_template).with_config(run_name="PromptTemplate")
+
+class HistoryAwareChain(Chain):
+    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory):
+        super().__init__(llm, handler, name)
+        self.history = history
+        
+    def get_history_ctx(self):
+        return RunnablePassthrough.assign(
+            history_ctx = RunnableLambda(lambda x: self.history.get_all_messages())
+        ).with_config(run_name="HistoryCTX")
+    
+    def fill_prompt(self, system_template: str):
         return ChatPromptTemplate.from_messages(
             [
                 ("system", system_template),
-                ("human", "{input}")
+                MessagesPlaceholder("history_ctx")
             ]
-        ).with_config(run_name="ChatPromptTemplate")
-
-class HistoryAwareChain(Chain):
-    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory, num_messages: int):
-        super().__init__(llm, handler, name)
-        self.history = history
-        self.num_messages = num_messages
+        ).with_config(run_name="PromptTemplate")
     
-    def get_history_ctx(self, n):
-        history_ctx = ["CHAT HISTORY:"]
-        ctx = self.history.get_last_messages(n)
-        if ctx:
-            for msg in ctx:
-                if isinstance(msg, AIMessage):
-                    m = "AI: " + msg.content
-                elif isinstance(msg, HumanMessage):
-                    m = "HUMAN: " + msg.content
-                history_ctx.append(m)
-            history_ctx.append("NON ripetere i contenuti dei messaggi precedenti.")
-            return "\n".join(history_ctx)
-        else:
-            return ""
-        
-    def history_chain(self):
-        return RunnablePassthrough.assign(
-            history_ctx = RunnableLambda(lambda x: self.get_history_ctx(self.num_messages))
-        ).with_config(run_name="HistoryCTX")
+    def invoke(self, input, containers=None):
+        try:
+            if self.handler:
+                self.handler.start(containers)
+            self.history.add_message_from_user(input)
+            response = self.run().invoke(input)
+            if self.handler:
+                self.handler.on_new_token(response)
+                self.handler.end()
+            self.history.add_message_from_response(response)
+            return response
+        except Exception as e:
+            if self.handler:
+                self.handler.error(e)
+            else:
+                raise e
+            return {}
+    
+    async def ainvoke(self, input, containers=None):
+        try:
+            if self.handler:
+                self.handler.start(containers)
+            self.history.add_message_from_user(input)
+            response = await self.run().ainvoke(input)
+            if self.handler:
+                self.handler.on_new_token(response)
+                self.handler.end()
+            self.history.add_message_from_response(response)
+            return response
+        except Exception as e:
+            if self.handler:
+                self.handler.error(e)
+            else:
+                raise e
+            return {}
+
+    def stream(self, input, containers=None):
+        try:
+            if self.handler:
+                self.handler.start(containers)
+            response = {}
+            self.history.add_message_from_user(input)
+            out = self.run().stream(input)
+            for token in out:
+                if self.handler:
+                    self.handler.on_new_token(token)
+                response += token
+            if self.handler:
+                self.handler.end()
+            self.history.add_message_from_response(response)
+            return response
+        except Exception as e:
+            if self.handler:
+                self.handler.error(e)
+            else:
+                raise e
+            return {}
+    
+    async def astream(self, input, containers=None):
+        try:
+            if self.handler:
+                self.handler.start(containers)
+            response = {}
+            self.history.add_message_from_user(input)
+            out = self.run().astream(input)
+            async for token in out:
+                if self.handler:
+                    self.handler.on_new_token(token)
+                response += token
+            if self.handler:
+                self.handler.end()
+            self.history.add_message_from_response(response)
+            return response
+        except Exception as e:
+            if self.handler:
+                self.handler.error(e)
+            else:
+                raise e
+            return {}
 
 CONVERSATION_TEMPLATE = """ \
 Tu sei un assistente che risponde alle domande relative all'Aeronautica Militare Italiana. \
@@ -119,13 +229,11 @@ Dialoga con l'utente e rispondi alle sue domande. \
 Se ti dovessero chiedere il tuo nome, tu ti chiami Turi.
 Se l'utente ti ringrazia, rispondi con "Prego" o "Non c'è di che" e renditi sempre disponibile. \
 Cerca di rispondere in modo adeguato alla conversazione.
-
-{history_ctx}
 """
 
 class ConversationalChain(HistoryAwareChain):
-    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory, num_messages: int):
-        super().__init__(llm, handler, name, history, num_messages)
+    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory):
+        super().__init__(llm, handler, name, history)
         print("\33[1;34m[ConversationalChain]\33[0m: Chain inizializzata")
     
     def sequence(self):
@@ -141,8 +249,7 @@ class ConversationalChain(HistoryAwareChain):
     
     def run(self):
         return ((
-            RunnableLambda(lambda x: self.history_chain())
-            | self.answer()
+            self.get_history_ctx() | self.answer()
         ).assign(signature=lambda x: self.name)
         ).with_config(run_name=self.name)
   
@@ -170,37 +277,23 @@ class ClassificationChain(Chain):
         super().__init__(llm, handler, name)
         print("\33[1;34m[ClassificationChain]\33[0m: Chain inizializzata")
     
-    #* Override
-    def fill_prompt(self):
-        return ChatPromptTemplate.from_template(CLASSIFICATION_TEMPLATE).with_config(run_name="ChatPromptTemplate")
-    
     def sequence(self):
         return RunnableSequence(
-            self.fill_prompt(),
+            self.fill_prompt(CLASSIFICATION_TEMPLATE),
             self.llm,
             JsonOutputParser()
         ).with_config(run_name="ClassificationSequence")
-    
-    def classify(self):
-        return RunnablePassthrough.assign(
-            type = RunnableLambda(lambda x:
-                self.sequence().invoke({"input": x.get('input')}).get('type', 'conversational'))
-        ).with_config(run_name="ClassifyInput")
         
     def run(self):
-        return ((
-            RunnableLambda(lambda x: self.classify())
-        ).assign(signature=lambda x: self.name)
+        return (
+            self.sequence()
         ).with_config(run_name=self.name)
 
 SUMMARIZATION_TEMPLATE = """
 Stai parlando con un utente e devi fare un riassunto delle informazioni di cui avete discusso. \
-L'utente ti ha chiesto di farlo con questa domanda: "{input}".
-NON ripetere la domanda dell'utente. \
+NON ripetere l'ultima domanda dell'utente. \
 Se possibile rendi la tua risposta strutturata, utilizzando elenco puntato o numerato. \
 Rispondi in ITALIANO (o nella lingua della domanda) rispettando la richiesta dell'utente e utilizzando le informazioni seguenti. \
-
-{history_ctx}
 """
 
 class SummarizationChain(HistoryAwareChain):
@@ -209,17 +302,13 @@ class SummarizationChain(HistoryAwareChain):
     To use it it is necessary to specify:
     - input
     """
-    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory, num_messages: int):
-        super().__init__(llm, handler, name, history, num_messages)
+    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory):
+        super().__init__(llm, handler, name, history)
         print("\33[1;34m[SummarizationChain]\33[0m: Chain inizializzata")
-    
-    #* Override
-    def fill_prompt(self):
-        return PromptTemplate.from_template(SUMMARIZATION_TEMPLATE).with_config(run_name="ChatPromptTemplate")
         
     def sequence(self):
         return RunnableSequence(
-            self.fill_prompt(),
+            self.fill_prompt(SUMMARIZATION_TEMPLATE),
             self.llm
         ).with_config(run_name="SummarizationSequence")
         
@@ -230,8 +319,7 @@ class SummarizationChain(HistoryAwareChain):
     
     def run(self):
         return ((
-            RunnableLambda(lambda x: self.history_chain())
-            | self.answer()
+            self.get_history_ctx() | self.answer()
         ).assign(signature=lambda x: self.name)
         ).with_config(run_name=self.name)
     
@@ -244,8 +332,6 @@ Se la domanda NON è inerente al contesto, rispondi con "Non so rispondere a que
 L'utente NON deve sapere che stai rispondendo grazie ai seguenti documenti. \
 Se possibile rendi la tua risposta strutturata, utilizzando elenco puntato o numerato. \
 
-{history_ctx}
-
 CONTESTO:
 {context}
 """
@@ -256,19 +342,15 @@ class RAGChain(HistoryAwareChain):
     To use it it is necessary to specify:
     - input
     """
-    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory, num_messages: int,
+    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory,
                  retriever: Retriever, retrieval_threshold: float, followup_threshold: float, distance_threshold: float):
-        super().__init__(llm, handler, name, history, num_messages)
+        super().__init__(llm, handler, name, history)
         self.retriever = retriever
         
         self.retrieval_threshold = retrieval_threshold
         self.followup_threshold = followup_threshold
         self.distance_threshold = distance_threshold
         print("\33[1;34m[RAGChain]\33[0m: Chain inizializzata")
-    
-    #* Override
-    def fill_prompt(self):
-        return PromptTemplate.from_template(RAG_TEMPLATE).with_config(run_name="ChatPromptTemplate")
     
     def context(self):
         return RunnablePassthrough.assign(
@@ -277,7 +359,7 @@ class RAGChain(HistoryAwareChain):
     
     def sequence(self):
         return RunnableSequence(
-            self.fill_prompt(),
+            self.fill_prompt(RAG_TEMPLATE),
             self.llm
         ).with_config(run_name="RAGSequence")
     
@@ -288,8 +370,8 @@ class RAGChain(HistoryAwareChain):
         
     def run(self):
         return ((
-            RunnableLambda(lambda x: self.context())
-            | RunnableLambda(lambda x: self.history_chain())
+            self.get_history_ctx()
+            | self.context()
             | self.answer()
         ).assign(signature=lambda x: self.name)
         ).with_config(run_name=self.name)
@@ -297,9 +379,9 @@ class RAGChain(HistoryAwareChain):
     def get_ctx(self, user_input) -> str:
         relevant_docs = []
         # prendo i documenti che sono stati usati per rispondere alle domande precedenti
-        folloup_ctx = self.history.get_followup_ctx(user_input, self.followup_threshold)
-        if folloup_ctx:
-            relevant_docs.extend(folloup_ctx)
+        #!folloup_ctx = self.history.get_followup_ctx(user_input, self.followup_threshold)
+        #!if folloup_ctx:
+        #!    relevant_docs.extend(folloup_ctx) DEBUG
         # prendo i documenti che sono simili alla domanda dell'utente
         docs = self.retriever.invoke(user_input)
         if docs:
@@ -321,9 +403,9 @@ class ChainOfThoughts(HistoryAwareChain):
     To use it it is necessary to specify:
     - input
     """
-    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory, num_messages: int,
+    def __init__(self, llm: Runnable, handler: StdOutHandler | None, name: str, history: ChatHistory,
                  retriever: Retriever, retrieval_threshold: float, followup_threshold: float, distance_threshold: float):
-        super().__init__(llm, handler, name, history, num_messages)
+        super().__init__(llm, handler, name, history)
         self.retriever = retriever
         
         self.retrieval_threshold = retrieval_threshold
@@ -331,10 +413,10 @@ class ChainOfThoughts(HistoryAwareChain):
         self.distance_threshold = distance_threshold
 
         self.classification_chain = ClassificationChain(self.llm, self.handler, "ClassificationChain")
-        self.conversational_chain = ConversationalChain(self.llm, self.handler, "ConversationalChain", self.history, self.num_messages)
-        self.summarization_chain = SummarizationChain(self.llm, self.handler, "SummarizationChain", self.history, self.num_messages)
-        self.RAG_chain = RAGChain(self.llm, self.handler, "RAGChain", self.history, self.num_messages,
-                                            self.retriever, self.retrieval_threshold, self.followup_threshold, self.distance_threshold)
+        self.conversational_chain = ConversationalChain(self.llm, self.handler, "ConversationalChain", self.history)
+        self.summarization_chain = SummarizationChain(self.llm, self.handler, "SummarizationChain", self.history)
+        self.RAG_chain = RAGChain(self.llm, self.handler, "RAGChain", self.history, self.retriever,
+                                  self.retrieval_threshold, self.followup_threshold, self.distance_threshold)
         print("\33[1;34m[ChainOfThoughts]\33[0m: Chain inizializzata")
 
     def branch(self):
@@ -351,9 +433,22 @@ class ChainOfThoughts(HistoryAwareChain):
             self.conversational_chain.run()
         ).with_config(run_name="ChainOfThoughtsBranch")
     
+    def classify(self):
+        return (
+            RunnablePassthrough.assign(
+                type = RunnableLambda(lambda x: self.classification_chain.run())
+            )
+            | RunnableLambda(lambda x: self.extract_type(x))
+        ).with_config(run_name="ChainOfThoughtsClassification")
+    
+    def extract_type(self, inp: dict):
+        old_type = inp.get('type', {})
+        new_type = old_type.get('type', 'conversational')
+        inp['type'] = new_type
+        return inp
+    
     def run(self):
         return ((
-            self.classification_chain.run()
-            | self.branch()
+            self.classify() | self.branch()
         ).assign(signature=lambda x: self.name)
         ).with_config(run_name=self.name)

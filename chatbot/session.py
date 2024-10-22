@@ -11,18 +11,13 @@ import streamlit as st
 import os
 
 class Session():
-    def __init__(self, title: str, icon: str, header: str = ""):
-        st.set_page_config(page_title=title, page_icon=icon)
+    def __init__(self, page_title:str, title: str, icon: str, header: str = ""):
+        st.set_page_config(page_title=page_title, page_icon=icon)
         st.title(title)
         if header != "":
             st.header(header)
         
         self.state = st.session_state
-    
-    def limit_history(self, history_size: int):
-        if len(self.state.history.messages) > history_size:
-            print(f"\33[1;33m[Session]\33[0m: Limitazione della history a {history_size} messaggi")
-            self.state.history.messages = self.state.history.messages[-history_size:]
         
     def initialize_session_state(self):
         if "is_initialized" not in self.state or not self.state.is_initialized:
@@ -35,15 +30,15 @@ class Session():
             print("\33[1;32m[Session]\33[0m: Messaggi inizializzati")
             
             # History
-            self.state.history = ChatHistory()
-            print("\33[1;32m[Session]\33[0m: Store inizializzato")
+            self.state.history = ChatHistory(self.state.config['history_size'])
+            print("\33[1;32m[Session]\33[0m: ChatHistory inizializzata")
             
             # Handler
-            self.state.handler = StdOutHandler()
+            self.state.handler = StdOutHandler(debug=True)
             print("\33[1;32m[Session]\33[0m: StreamHandler inizializzato")
             
             # Retriever
-            self.state.retriever = RetrieverBuilder(self.state.config).build()
+            self.state.retriever = RetrieverBuilder.build(self.state.config)
             if self.state.retriever is None:
                 print("\33[1;31m[Session]\33[0m: Retriever non inizializzato")
                 return self.state.is_initialized
@@ -65,7 +60,6 @@ class Session():
                 handler=self.state.handler,
                 name="ChainOfThoughts",
                 history=self.state.history,
-                num_messages=self.state.config['history_size'],
                 retriever=self.state.retriever,
                 retrieval_threshold=self.state.config['retrieval_threshold'],
                 followup_threshold=self.state.config['followup_threshold'],
@@ -77,7 +71,7 @@ class Session():
             print("\33[1;32m[Session]\33[0m: Inizializzazione completata")
             return self.state.is_initialized
     
-    def update(self):
+    async def update(self):
         if "is_initialized" not in self.state or not self.state.is_initialized:
             print("\33[1;31m[Session]\33[0m: Sessione non inizializzata")
             raise Exception(RuntimeError)
@@ -129,12 +123,7 @@ class Session():
                 with st.chat_message("ai"):
                     containers = (st.empty(), st.empty())
                     with st.spinner("Elaborazione in corso..."):
-                        response = self.state.chain.stream(input_dict, containers)
-                
-                self.state.history.add_message_from_user(prompt)
-                self.state.history.add_message_from_response(response)
-                
-                self.limit_history(self.state.config['history_size'])
+                        response = await self.state.chain.astream(input_dict, containers)
                 
                 self.state.messages.append({
                     "role": "ai",
@@ -159,11 +148,6 @@ class Session():
                 containers = (st.empty(), st.empty())
                 with st.spinner("Elaborazione in corso..."):
                     response = self.state.chain.stream(input_dict, containers)
-            
-            self.state.history.add_message_from_user(faq_prompt)
-            self.state.history.add_message_from_response(response)
-                
-            self.limit_history(self.state.config['history_size'])
             
             self.state.messages.append({
                 "role": "ai",
