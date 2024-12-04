@@ -1,7 +1,7 @@
 db: './db'
 
 model:
-  name: 'Dolphin'
+  name: 'llama3.1'
   base_url: 'http://localhost:11434'
   temperature: 0
   num_ctx: 8192

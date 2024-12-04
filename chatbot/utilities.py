@@ -1,6 +1,8 @@
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.documents import Document
+from debugger import debug
 
 from time import time
 import yaml
@@ -15,7 +17,9 @@ class MessageWithDocs():
 
     def embed_self(self, vectorizer):
         if self.vector is None:  # Embed only if not already embedded
-            full_text = self.message.content + " " + " ".join(doc.page_content for doc in self.documents)
+            full_text = self.message.content
+            if self.documents:
+                full_text += "\n\n" + docs_to_string(self.documents, sep="")
             self.vector = vectorizer.transform([full_text]).toarray()[0]
         return self.vector
 
@@ -38,53 +42,53 @@ class ChatHistory():
         self.limit_history()
     
     def add_message_from_response(self, response: dict):
+        response_context = response.get('context', [])
+        if response_context:
+            response_context = string_to_docs(response_context)
         message = MessageWithDocs(
             message = AIMessage(content = response.get('answer', '')),
-            documents = response.get('context', '')
+            documents = response_context
         )
+        print(f"\33[1;31m[DEBUG]\33[0m: {message.documents}")
         self.messages.append(message)
         self.limit_history()
     
+    @debug()
     def train_vectorizer(self):
         all_texts = []
-        for msg in self.messages:
-            if msg.documents != []:
-                all_texts.append(msg.message.content + " " + " ".join(doc.page_content for doc in msg.documents))
-        print("\33[1;31mDA QUI NON FUNZIONA\33[0m") #! DEBUG
-        self.vectorizer = TfidfVectorizer(encoding='utf-8').fit(all_texts)
+        ai_messagges = [msg for msg in self.messages if isinstance(msg.message, AIMessage)]
+        for msg in ai_messagges:
+            all_texts.append(msg.message.content + "\n\n" + docs_to_string(msg.documents, sep=""))
+        print(f"\33[1;31m[DEBUG]\33[0m: {all_texts}")
+        if all_texts:
+            self.vectorizer = TfidfVectorizer(encoding='utf-8').fit(all_texts)
     
-    def get_message_ctx(self, message: str, threshold: float):
-        message = MessageWithDocs(
-            message = HumanMessage(content = message),
-            documents = []
-        )
-        selected_vector = message.embed_self(self.vectorizer)
+    @debug()
+    def get_old_messages_ctx(self, threshold: float):
+        print(f"\33[1;36m[DEBUG]\33[0m: Sto per embeddare il primo messaggio")
+        user_message_vector = self.messages[-1].embed_self(self.vectorizer)
         ctx = []
-        for i in range(len(self.messages)):
-            vector = self.messages[i].embed_self(self.vectorizer)
-            similarity = cosine_similarity([selected_vector], [vector])[0][0]
+        ai_messagges = [msg for msg in self.messages if isinstance(msg.message, AIMessage)]
+        print(f"\33[1;36m[DEBUG]\33[0m: Ci sono {len(ai_messagges)} messaggi da embeddare")
+        count = 0
+        for msg in ai_messagges:
+            print(f"\33[1;36m[DEBUG]\33[0m: Sto per embeddare il messaggio {count}")
+            count += 1
+            vector = msg.embed_self(self.vectorizer)
+            similarity = cosine_similarity([user_message_vector], [vector])[0][0]
             if similarity > threshold:
-                ctx.extend(self.messages[i].documents)
+                ctx.extend(msg.documents)
+        if not ctx: # Se non ho trovato nessun contesto, prendo l'ultimo contesto
+            print(f"\33[1;36m[DEBUG]\33[0m: Non ho trovato nessun contesto, prendo l'ultimo")
+            ctx.extend(ai_messagges[-1].documents)
         return ctx
     
-    def get_last_message_ctx(self, threshold: float):
-        selected_vector = self.messages[-1].embed_self(self.vectorizer)
-        ctx = []
-        for i in range(len(self.messages) - 1):
-            vector = self.messages[i].embed_self(self.vectorizer)
-            similarity = cosine_similarity([selected_vector], [vector])[0][0]
-            if similarity > threshold:
-                ctx.extend(self.messages[i].documents)
-        ctx.extend(self.messages[-1].documents)
-        return ctx
-    
-    def get_followup_ctx(self, message: str, threshold: float):
+    @debug()
+    def get_followup_ctx(self, threshold: float):
         self.train_vectorizer()
-        message_ctx = self.get_message_ctx(message, threshold)
-        if message_ctx:
-            return message_ctx
-        else:
-            return self.get_last_message_ctx(threshold)
+        if self.vectorizer is None:
+            return []
+        return self.get_old_messages_ctx(threshold)
     
     def get_all_messages(self):
         if self.messages == []:
@@ -163,5 +167,8 @@ def load_config(file_path='config.yaml'):
         config = yaml.safe_load(file)
     return config
 
-def format_docs(docs):
-    return "\n\n".join([d.page_content for d in docs])
+def docs_to_string(docs, sep="§§§§§"):
+    return f"\n{sep}\n".join([d.page_content for d in docs])
+
+def string_to_docs(string, sep="§§§§§"):
+    return [Document(page_content=page) for page in string.split(sep)]

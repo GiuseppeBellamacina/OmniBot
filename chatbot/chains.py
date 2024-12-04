@@ -11,10 +11,12 @@ from langchain_core.runnables import (
     Runnable
 )
 from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.documents import Document
 
 from retriever import Retriever
-from utilities import ChatHistory, StdOutHandler, format_docs
+from utilities import ChatHistory, StdOutHandler, docs_to_string
 from abc import ABC, abstractmethod
+from debugger import debug
 
 class ChainInterface(ABC):
     @abstractmethod
@@ -135,7 +137,7 @@ class HistoryAwareChain(Chain):
         return ChatPromptTemplate.from_messages(
             [
                 ("system", system_template),
-                MessagesPlaceholder("history_ctx")
+                MessagesPlaceholder("history_ctx", optional=True)
             ]
         ).with_config(run_name="PromptTemplate")
     
@@ -376,25 +378,30 @@ class RAGChain(HistoryAwareChain):
         ).assign(signature=lambda x: self.name)
         ).with_config(run_name=self.name)
     
+    @debug()
     def get_ctx(self, user_input) -> str:
         relevant_docs = []
         # prendo i documenti che sono stati usati per rispondere alle domande precedenti
-        #!folloup_ctx = self.history.get_followup_ctx(user_input, self.followup_threshold)
-        #!if folloup_ctx:
-        #!    relevant_docs.extend(folloup_ctx) DEBUG
+        follwoup_ctx = self.history.get_followup_ctx(self.followup_threshold)
+        if follwoup_ctx:
+            if type(follwoup_ctx[0]) is not Document:
+                print(f"\33[1;31m[RAGChain]\33[0m: I documentisono di tipo {type(follwoup_ctx[0])}")
+                raise Exception(TypeError)
+            relevant_docs.extend(follwoup_ctx) #! SPERIMENTALE
         # prendo i documenti che sono simili alla domanda dell'utente
         docs = self.retriever.invoke(user_input)
         if docs:
             relevant_docs.extend(docs)
-            # rimuovo i documenti duplicati
-            unique_docs = {}
-            for doc in relevant_docs:
-                try:
-                    unique_docs[doc.metadata['id']] = doc
-                except Exception as e:
-                    raise e
-            sorted_docs = sorted(unique_docs.values(), key=lambda d: d.metadata['id'])
-            return format_docs(sorted_docs)
+        # rimuovo i documenti duplicati
+        unique_docs = {}
+        for doc in relevant_docs:
+            try:
+                unique_docs[doc.metadata.get('id', '0')] = doc
+            except Exception as e:
+                raise e
+        sorted_docs = sorted(unique_docs.values(), key=lambda d: d.metadata.get('id', '0'))
+        if sorted_docs:
+            return docs_to_string(sorted_docs)
         return ''
 
 class ChainOfThoughts(HistoryAwareChain):

@@ -11,8 +11,6 @@ from langchain.retrievers.document_compressors.base import (
     BaseDocumentCompressor,
 )
 
-from debugger import debug
-
 class Retriever(BaseRetriever):
     compressor: BaseDocumentCompressor
     retriever: RetrieverLike
@@ -116,8 +114,6 @@ class Retriever(BaseRetriever):
         # Ritorna i documenti ordinati per ID
         return sorted(refiltered_docs, key=lambda x: x.metadata.get('id'))
 
-    
-    @debug()
     def filter_by_similarity(self, docs: list[Document], threshold=0) -> list[Document]:
         if threshold == 0:
             return docs
@@ -128,7 +124,6 @@ class Retriever(BaseRetriever):
             return docs
         return [d for d in docs if d.metadata.get('relevance_score') > threshold]
     
-    @debug()
     def filter_by_distance(self, docs: list[Document], threshold=0) -> list[Document]:
         if threshold == 0:
             return [d for (d, _) in docs]
@@ -139,7 +134,6 @@ class Retriever(BaseRetriever):
             return [d for (d, _) in docs]
         return [d for (d, score) in docs if score < threshold]
     
-    @debug()
     def search_by_vector(self, docs: List[Document]) -> list[Document]:
         embedded_docs = self.embedder.embed_documents([d.page_content for d in docs])
         similar_docs = []

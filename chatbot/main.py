@@ -13,4 +13,16 @@ async def main():
     await session.update()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    #asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    #asyncio.run(main())
+
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            asyncio.set_event_loop(asyncio.new_event_loop())
+            loop = asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        loop = asyncio.get_event_loop()
+    finally:
+        loop.run_until_complete(main())

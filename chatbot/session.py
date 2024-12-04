@@ -147,7 +147,7 @@ class Session():
             with st.chat_message("ai"):
                 containers = (st.empty(), st.empty())
                 with st.spinner("Elaborazione in corso..."):
-                    response = self.state.chain.stream(input_dict, containers)
+                    response = await self.state.chain.astream(input_dict, containers)
             
             self.state.messages.append({
                 "role": "ai",
