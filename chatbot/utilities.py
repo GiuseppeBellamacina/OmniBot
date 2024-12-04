@@ -14,17 +14,15 @@ class MessageWithDocs():
     def __init__(self, message, documents):
         self.message = message
         self.documents = documents
-        self.vector = None
 
+    @debug()
     def embed_self(self, vectorizer):
-        if True: #! self.vector is None:  # Embed only if not already embedded
-            print("\33[1;33m[EMBED]\33[0m: Sto per fare un nuovo embedding")
-            full_text = self.message.content
-            if self.documents:
-                full_text += "\n\n" + docs_to_string(self.documents, sep="")
-            self.vector = vectorizer.transform([full_text]).toarray()[0]
-        print("\33[1;32m[EMBED]\33[0m: Ti sto dando il vettore")
-        return self.vector
+        if not self.vectorizer:
+            return []
+        full_text = self.message.content
+        if self.documents:
+            full_text += "\n\n" + docs_to_string(self.documents, sep="")
+        return vectorizer.transform([full_text]).toarray()[0]
 
 class ChatHistory():
     def __init__(self, limit: int = 0):
@@ -60,12 +58,14 @@ class ChatHistory():
         all_texts = []
         ai_messagges = [msg for msg in self.messages if isinstance(msg.message, AIMessage)]
         for msg in ai_messagges:
-            all_texts.append(msg.message.content + "\n\n" + docs_to_string(msg.documents, sep=""))
+            all_texts.append(msg.message.content + "\n" + docs_to_string(msg.documents, sep="\n"))
         if all_texts:
             self.vectorizer = TfidfVectorizer(encoding='utf-8').fit(all_texts)
     
     @debug()
     def get_old_messages_ctx(self, threshold: float):
+        if not self.vectorizer:
+            return []
         user_message_vector = self.messages[-1].embed_self(self.vectorizer)
         ctx = []
         ai_messagges = [msg for msg in self.messages if isinstance(msg.message, AIMessage)]
@@ -77,9 +77,9 @@ class ChatHistory():
                 print("\33[1;32m[COSINE]\33[0m: Ce l'ho fatta")
             except Exception as e:
                 print("\33[1;31m[COSINE]\33[0m: Non ce l'ho fatta")
-                print(e)
                 print("User Vector:", user_message_vector)
                 print("Vector", vector)
+                raise e
             if similarity > threshold:
                 ctx.extend(msg.documents)
         if not ctx: # Se non ho trovato nessun contesto, prendo l'ultimo contesto
@@ -145,14 +145,15 @@ class StdOutHandler():
             self.containers[1].markdown(text_time)
     
     def error(self, error: Exception):
-        self.time = time() - self.time
         self.text = ""
+        self.time = time() - self.time
+        text_time = f"⏱ Tempo di risposta: {self.time:.2f} secondi"
         if self.debug:
             print(f"\33[1;31m[STDOUTHANDLER]\33[0m: {error}")
-            print(f"⏱ Tempo di risposta: {self.time:.2f} secondi")
+            print(text_time)
         if self.containers:
             self.containers[0].markdown(f"Errore: {error}")
-            self.containers[1].markdown(f"⏱ Tempo di risposta: {self.time:.2f} secondi")
+            self.containers[1].markdown(text_time)
         raise error
 
 def load_config(file_path='config.yaml'):
@@ -170,13 +171,13 @@ def load_config(file_path='config.yaml'):
     return config
 
 @debug()
-def docs_to_string(docs, sep="§§§§§"):
+def docs_to_string(docs, sep="\n§§§§§\n"):
     if docs:
-        return f"\n{sep}\n".join([d.page_content for d in docs])
+        return f"{sep}".join([d.page_content for d in docs])
     return ""
 
 @debug()
-def string_to_docs(string, sep="§§§§§"):
+def string_to_docs(string, sep="\n§§§§§\n"):
     if string:
         return [Document(page_content=page) for page in string.split(sep)]
     return []

@@ -24,7 +24,7 @@ def debug(max_items=5):
             try:
                 result = func(*args, **kwargs)
                 print("\33[1;37mSTATUS\33[0m: \33[1;32mOK\33[0m")
-                print(f'Function \33[1;32m{func.__name__}\33[0m \33[1;37mRETURNS\33[0m:')
+                print(f'Function \33[1;32m{func.__name__}\33[0m \33[1;37mRETURN\33[0m:')
                 print_return_info(result, max_items)
                 print("\33[1;33m----------------------------------------------\33[0m")
                 return result

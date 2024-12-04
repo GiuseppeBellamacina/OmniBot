@@ -11,8 +11,6 @@ from langchain.retrievers.document_compressors.base import (
     BaseDocumentCompressor,
 )
 
-from debugger import debug
-
 class Retriever(BaseRetriever):
     compressor: BaseDocumentCompressor
     retriever: RetrieverLike
