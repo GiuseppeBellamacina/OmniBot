@@ -11,6 +11,8 @@ from langchain.retrievers.document_compressors.base import (
     BaseDocumentCompressor,
 )
 
+from debugger import debug
+
 class Retriever(BaseRetriever):
     compressor: BaseDocumentCompressor
     retriever: RetrieverLike
@@ -21,7 +23,7 @@ class Retriever(BaseRetriever):
     config: dict
 
     class Config: arbitrary_types_allowed = True
-    
+
     def _get_relevant_documents(
         self,
         query: str,

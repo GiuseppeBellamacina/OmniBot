@@ -16,7 +16,6 @@ from langchain_core.documents import Document
 from retriever import Retriever
 from utilities import ChatHistory, StdOutHandler, docs_to_string
 from abc import ABC, abstractmethod
-from debugger import debug
 
 class ChainInterface(ABC):
     @abstractmethod
@@ -228,7 +227,7 @@ ESEMPI: piloti, aerei, carriere, accademia, corsi, concorsi, bandi... \
 NON rispondere ad una domanda con un'altra domanda. \
 Se la domanda NON è inerente al contesto, rispondi con "Non so rispondere a questa domanda". \
 Dialoga con l'utente e rispondi alle sue domande. \
-Se ti dovessero chiedere il tuo nome, tu ti chiami Turi.
+Se ti dovessero chiedere il tuo nome, tu ti chiami Azzurra.
 Se l'utente ti ringrazia, rispondi con "Prego" o "Non c'è di che" e renditi sempre disponibile. \
 Cerca di rispondere in modo adeguato alla conversazione.
 """
@@ -377,8 +376,7 @@ class RAGChain(HistoryAwareChain):
             | self.answer()
         ).assign(signature=lambda x: self.name)
         ).with_config(run_name=self.name)
-    
-    @debug()
+
     def get_ctx(self, user_input) -> str:
         relevant_docs = []
         # prendo i documenti che sono stati usati per rispondere alle domande precedenti
@@ -387,7 +385,7 @@ class RAGChain(HistoryAwareChain):
             if type(follwoup_ctx[0]) is not Document:
                 print(f"\33[1;31m[RAGChain]\33[0m: I documentisono di tipo {type(follwoup_ctx[0])}")
                 raise Exception(TypeError)
-            relevant_docs.extend(follwoup_ctx) #! SPERIMENTALE
+            relevant_docs.extend(follwoup_ctx)
         # prendo i documenti che sono simili alla domanda dell'utente
         docs = self.retriever.invoke(user_input)
         if docs:
@@ -396,10 +394,10 @@ class RAGChain(HistoryAwareChain):
         unique_docs = {}
         for doc in relevant_docs:
             try:
-                unique_docs[doc.metadata.get('id', '0')] = doc
+                unique_docs[doc.metadata.get('id', 0)] = doc
             except Exception as e:
                 raise e
-        sorted_docs = sorted(unique_docs.values(), key=lambda d: d.metadata.get('id', '0'))
+        sorted_docs = sorted(unique_docs.values(), key=lambda d: d.metadata.get('id', 0))
         if sorted_docs:
             return docs_to_string(sorted_docs)
         return ''

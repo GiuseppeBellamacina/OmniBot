@@ -1,7 +1,7 @@
 db: './db'
 
 model:
-  name: 'llama3.1'
+  name: 'Dolphin'
   base_url: 'http://localhost:11434'
   temperature: 0
   num_ctx: 8192
@@ -18,3 +18,7 @@ distance_threshold: 0.2
 
 k: 10 # standard retriever documents
 top_n: 6 # compressor documents
+
+tts_model : "tts_models/multilingual/multi-dataset/xtts_v2"
+speakers: ['Alexandra Hisakawa', 'Ana Florence', 'Asya Anara', 'Lilya Stainthorpe', 'Rosemary Okafor']
+ 

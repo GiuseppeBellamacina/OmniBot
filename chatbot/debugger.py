@@ -24,7 +24,7 @@ def debug(max_items=5):
             try:
                 result = func(*args, **kwargs)
                 print("\33[1;37mSTATUS\33[0m: \33[1;32mOK\33[0m")
-                print(f'\33[1;37mRETURN\33[0m:')
+                print(f'Function \33[1;32m{func.__name__}\33[0m \33[1;37mRETURNS\33[0m:')
                 print_return_info(result, max_items)
                 print("\33[1;33m----------------------------------------------\33[0m")
                 return result
@@ -80,10 +80,10 @@ def print_arg_info(param_name, arg, max_items):
 
 def print_return_info(result, max_items):
     if isinstance(result, (list, tuple, set)):
-        print(f'  Function returned {type(result)} with {len(result)} items:')
+        print(f'  {type(result)} with {len(result)} items:')
         print_subscritable(result, max_items)
     elif isinstance(result, dict):
-        print(f'  Function returned {type(result)} with {len(result)} items:')
+        print(f'  {type(result)} with {len(result)} items:')
         print_dict(result, max_items)
     else:
-        print(f'  Function returned {type(result)}: {result}')
+        print(f'  {type(result)}: {result}')
