@@ -10,10 +10,8 @@ from utilities import (
 import streamlit as st
 import os
 
-from TTS.api import TTS
 import sounddevice as sd
 import soundfile as sf
-import numpy as np
 
 class Session():
     def __init__(self, page_title:str, title: str, icon: str, header: str = ""):
@@ -37,9 +35,9 @@ class Session():
             # History
             self.state.history = ChatHistory(self.state.config['history_size'])
             print("\33[1;32m[Session]\33[0m: ChatHistory inizializzata")
-            
+
             # Handler
-            self.state.handler = StdOutHandler(debug=True)
+            self.state.handler = StdOutHandler(self.state.config, debug=False)
             print("\33[1;32m[Session]\33[0m: StreamHandler inizializzato")
             
             # Retriever
@@ -71,9 +69,6 @@ class Session():
                 distance_threshold=self.state.config['distance_threshold']
             )
             print("\33[1;32m[Session]\33[0m: Chain inizializzata")
-            
-            self.state.tts = TTS(model_name=self.state.config["tts_model"]).to("cuda")
-            print("\33[1;32m[Session]\33[0m: TTS inizializzato")
 
             self.state.is_initialized = True
             print("\33[1;32m[Session]\33[0m: Inizializzazione completata")
@@ -114,21 +109,10 @@ class Session():
                 if message['role'] == 'ai':
                     st.markdown(f"⏱ Tempo di risposta: {message['response_time']:.2f} secondi")
         
+        #AUDIO
         if len(self.state.messages) >= 2:
-            if st.button("Parla"):
-                if not os.path.exists("tmp.wav"):
-                    message = self.state.messages[-1]['content'].strip("*()")
-                    messages = message.split(".")
-                    buffer = []
-                    for m in messages:
-                        if m:
-                            fragment = self.state.tts.tts(text=m, language="it", speaker=self.state.config["speakers"][1], speed=2.0)
-                            buffer.append(fragment)
-                    final_audio = np.concatenate(buffer)
-                    sd.play(final_audio, samplerate=22050)
-                    sd.wait()
-                    sf.write("tmp.wav", final_audio, 22050, format="WAV")
-                else:
+            if os.path.exists("tmp.wav"):
+                if st.button("Parla"):
                     data, fs = sf.read("tmp.wav", dtype="float32")
                     sd.play(data, fs)
                     sd.wait()
@@ -151,9 +135,6 @@ class Session():
                     containers = (st.empty(), st.empty())
                     with st.spinner("Elaborazione in corso..."):
                         response = await self.state.chain.astream(input_dict, containers)
-                
-                if os.path.exists("tmp.wav"):
-                    os.remove("tmp.wav")
                 
                 self.state.messages.append({
                     "role": "ai",
@@ -178,9 +159,6 @@ class Session():
                 containers = (st.empty(), st.empty())
                 with st.spinner("Elaborazione in corso..."):
                     response = await self.state.chain.astream(input_dict, containers)
-            
-            if os.path.exists("tmp.wav"):
-                os.remove("tmp.wav")
 
             self.state.messages.append({
                 "role": "ai",

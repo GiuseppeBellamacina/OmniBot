@@ -16,6 +16,10 @@ from langchain_core.documents import Document
 from retriever import Retriever
 from utilities import ChatHistory, StdOutHandler, docs_to_string
 from abc import ABC, abstractmethod
+from random import randint
+import sys
+
+from debugger import debug
 
 class ChainInterface(ABC):
     @abstractmethod
@@ -207,10 +211,10 @@ class HistoryAwareChain(Chain):
             out = self.run().astream(input)
             async for token in out:
                 if self.handler:
-                    self.handler.on_new_token(token)
+                    await self.handler.on_new_token(token)
                 response += token
             if self.handler:
-                self.handler.end()
+                await self.handler.end()
             self.history.add_message_from_response(response)
             return response
         except Exception as e:
@@ -355,7 +359,9 @@ class RAGChain(HistoryAwareChain):
     
     def context(self):
         return RunnablePassthrough.assign(
-            context = RunnableLambda(lambda x: self.get_ctx(x.get('input')))
+            documents = RunnableLambda(lambda x: self.get_ctx(x.get('input')))
+        ).with_config(run_name="RAGDocuments").assign(
+            context = RunnableLambda(lambda x: docs_to_string(x.get('documents')))
         ).with_config(run_name="RAGContext")
     
     def sequence(self):
@@ -377,6 +383,7 @@ class RAGChain(HistoryAwareChain):
         ).assign(signature=lambda x: self.name)
         ).with_config(run_name=self.name)
 
+    @debug()
     def get_ctx(self, user_input) -> str:
         relevant_docs = []
         # prendo i documenti che sono stati usati per rispondere alle domande precedenti
@@ -388,19 +395,20 @@ class RAGChain(HistoryAwareChain):
             relevant_docs.extend(follwoup_ctx)
         # prendo i documenti che sono simili alla domanda dell'utente
         docs = self.retriever.invoke(user_input)
+        print(f"\33[1;31m[RAGChain]\33[0m: Il retriever ha tornato {docs}")
         if docs:
             relevant_docs.extend(docs)
         # rimuovo i documenti duplicati
         unique_docs = {}
         for doc in relevant_docs:
             try:
-                unique_docs[doc.metadata.get('id', 0)] = doc
+                unique_docs[doc.metadata.get('id', randint(10000, sys.maxsize))] = doc
             except Exception as e:
                 raise e
-        sorted_docs = sorted(unique_docs.values(), key=lambda d: d.metadata.get('id', 0))
+        sorted_docs = sorted(unique_docs.values(), key=lambda d: d.metadata.get('id', randint(10000, sys.maxsize)))
         if sorted_docs:
-            return docs_to_string(sorted_docs)
-        return ''
+            return sorted_docs
+        return []
 
 class ChainOfThoughts(HistoryAwareChain):
     """

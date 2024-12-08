@@ -1,7 +1,7 @@
 db: './db'
 
 model:
-  name: 'Dolphin'
+  name: 'mistral-nemo'
   base_url: 'http://localhost:11434'
   temperature: 0
   num_ctx: 8192
@@ -12,12 +12,14 @@ history_size: 12
 embedder: 'embed-multilingual-v3.0'
 reranker: 'rerank-multilingual-v3.0'
 
-retrieval_threshold: 0.7
-followup_threshold: 0.45
-distance_threshold: 0.2
+retrieval_threshold: 0.6 # Si usa dopo ogni compressione
+followup_threshold: 0.45 # Si usa per i documenti di followup
+distance_threshold: 0.2 # Si usa per la vector distance
+simplifier: 0 # Si usa nella similarity dopo la prima compressione
 
-k: 10 # standard retriever documents
-top_n: 6 # compressor documents
+k: 14 # standard retriever documents
+top_n: 8 # compressor documents
 
 tts_model : "tts_models/multilingual/multi-dataset/xtts_v2"
 speakers: ['Alexandra Hisakawa', 'Ana Florence', 'Asya Anara', 'Lilya Stainthorpe', 'Rosemary Okafor']
+speaker_index: 1

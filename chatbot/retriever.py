@@ -18,6 +18,7 @@ class Retriever(BaseRetriever):
     vectorstore: FAISS
     retrieval_threshold: float
     distance_threshold: float
+    simplifier: float
     config: dict
 
     class Config: arbitrary_types_allowed = True
@@ -39,26 +40,56 @@ class Retriever(BaseRetriever):
         """
         callbacks = run_manager.get_child()
         docs = self.retriever.invoke(query, config={"callbacks": callbacks}, **kwargs)
+        try:
+            print("\33[1;34m[Retriever]\33[0m: Retrieved documents with standard method:", docs[1], len(docs))
+        except Exception as e:
+            print("\33[1;31m[Retriever]\33[0m: Error in printing retrieved docs")
+            print(e)
         if not docs:
             return []
 
         compressed_docs = self.compressor.compress_documents(docs, query, callbacks=callbacks)
+        try:
+            print("\33[1;34m[Retriever]\33[0m: Compressed documents after first compression:", compressed_docs[1], len(compressed_docs))
+        except Exception as e:
+            print("\33[1;31m[Retriever]\33[0m: Error in printing compressed docs")
+            print(e)
         if not compressed_docs:
             return []
 
-        filtered_docs = self.filter_by_similarity(compressed_docs, self.retrieval_threshold)
+        filtered_docs = self.filter_by_similarity(compressed_docs, self.retrieval_threshold * self.simplifier)
+        try:
+            print("\33[1;34m[Retriever]\33[0m: Filtered documents after first filter:", filtered_docs[1], len(filtered_docs))
+        except Exception as e:
+            print("\33[1;31m[Retriever]\33[0m: Error in printing filtered docs")
+            print(e)
         if not filtered_docs:
             return []
 
         similar_docs = self.search_by_vector(filtered_docs)
+        try:
+            print("\33[1;34m[Retriever]\33[0m: Retrieved similar documents with vector search:", similar_docs[1], len(similar_docs))
+        except Exception as e:
+            print("\33[1;31m[Retriever]\33[0m: Error in printing similar docs")
+            print(e)
         if not similar_docs:
             return []
 
         reranked_docs = self.compressor.compress_documents(similar_docs, query, callbacks=callbacks)
+        try:
+            print("\33[1;34m[Retriever]\33[0m: Compressed documents after second compression:", reranked_docs[1], len(reranked_docs))
+        except Exception as e:
+            print("\33[1;31m[Retriever]\33[0m: Error in printing reranked docs")
+            print(e)
         if not reranked_docs:
             return []
 
         refiltered_docs = self.filter_by_similarity(reranked_docs, self.retrieval_threshold)
+        try:
+            print("\33[1;34m[Retriever]\33[0m: Filtered documents after second filter:", refiltered_docs[1], len(refiltered_docs))
+        except Exception as e:
+            print("\33[1;31m[Retriever]\33[0m: Error in printing refiltered docs")
+            print(e)
         if not refiltered_docs:
             return []
 
@@ -161,6 +192,7 @@ class RetrieverBuilder():
     def build(self, config) -> Retriever:
         retrieval_threshold = config['retrieval_threshold']
         distance_threshold = config['distance_threshold']
+        simplifier = config['simplifier']
         embedder = CohereEmbeddings(model=config['embedder'])
         vectorstore = FAISS.load_local(config['db'], embeddings=embedder, allow_dangerous_deserialization=True)
         retriever = vectorstore.as_retriever(search_type='similarity', search_kwargs={'k': config['k']})
@@ -174,5 +206,6 @@ class RetrieverBuilder():
             vectorstore=vectorstore,
             retrieval_threshold=retrieval_threshold,
             distance_threshold=distance_threshold,
+            simplifier=simplifier,
             config=config
         )
