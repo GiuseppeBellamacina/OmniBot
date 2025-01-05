@@ -140,6 +140,7 @@ class HistoryAwareChain(Chain):
         return ChatPromptTemplate.from_messages(
             [
                 ("system", system_template),
+                ("system", "ATTENZIONE: NON fare autoprompting riportando nell'output un copione di risposte tra Human e AI."),
                 MessagesPlaceholder("history_ctx", optional=True)
             ]
         ).with_config(run_name="PromptTemplate")

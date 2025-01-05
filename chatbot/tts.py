@@ -10,6 +10,7 @@ import tiktoken
 app = FastAPI()
 config = None
 buffer = None
+maker = None
 
 class AudioFragment:
     """Rappresenta un frammento audio generato dal TTS."""
@@ -80,7 +81,7 @@ class AudioMaker:
         text_chunks = self.split_text_into_chunks(text, max_tokens)
 
         for index, chunk in enumerate(text_chunks):
-            fragment = await asyncio.to_thread(
+            fragment = await asyncio.to_thread( # TODO: gestire la memoria della GPU
                 self.tts.tts,
                 text=chunk,
                 language="it",
@@ -121,9 +122,18 @@ async def save_audio_file():
     except Exception as e:
         print("\33[1;31m[AUDIO MAKER]\33[0m Error:", e)
         return {"status": "error", "message": str(e)}
+    
+@app.get("/start")
+def start():
+    global config, buffer, maker
+    try:
+        config = load_config()
+        buffer = AudioBuffer()
+        maker = AudioMaker(config, buffer)
+        return {"status": "ready"}
+    except Exception as e:
+        print("\33[1;31m[AUDIO MAKER]\33[0m Error:", e)
+        return {"status": "error", "message": str(e)}
 
 if __name__ == "__main__":
-    config = load_config()
-    buffer = AudioBuffer()
-    maker = AudioMaker(config, buffer)
     uvicorn.run(app, host="0.0.0.0", port=8000)

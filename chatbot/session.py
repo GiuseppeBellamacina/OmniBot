@@ -13,6 +13,8 @@ import os
 import sounddevice as sd
 import soundfile as sf
 
+import httpx
+
 class Session():
     def __init__(self, page_title:str, title: str, icon: str, header: str = ""):
         st.set_page_config(page_title=page_title, page_icon=icon)
@@ -69,6 +71,14 @@ class Session():
                 distance_threshold=self.state.config['distance_threshold']
             )
             print("\33[1;32m[Session]\33[0m: Chain inizializzata")
+
+            response = httpx.get("http://localhost:8000/start", timeout=20)
+            if response.json().get("status", 'error') == 'error':
+                error = response.json().get("message", "Error")
+                print(error)
+                raise Exception(error)
+            elif response.json().get("status", 'error') == 'ready':
+                print("\33[1;32m[Session]\33[0m: TTS inizializzato")
 
             self.state.is_initialized = True
             print("\33[1;32m[Session]\33[0m: Inizializzazione completata")
@@ -131,6 +141,7 @@ class Session():
 
                 response = None
                 input_dict = {"input": prompt}
+
                 with st.chat_message("ai"):
                     containers = (st.empty(), st.empty())
                     with st.spinner("Elaborazione in corso..."):
@@ -141,7 +152,7 @@ class Session():
                     "content": response.get('answer', None),
                     "response_time": self.state.handler.time
                 })
-                
+
                 st.rerun()
         else:
             os.system("cls" if os.name == "nt" else "clear")
